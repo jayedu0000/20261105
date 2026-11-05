@@ -422,16 +422,16 @@
                 </div>
 
                 <div class="control-group">
-                    <h3>✉️ 이메일 입력 (사진 받기)</h3>
+                    <h3>📱 휴대폰 번호 입력 (사진 받기)</h3>
                     <div class="input-group">
-                        <label for="userEmail">이메일 주소</label>
-                        <input type="email" id="userEmail" placeholder="example@email.com">
+                        <label for="userPhone">휴대폰 번호</label>
+                        <input type="tel" id="userPhone" placeholder="01012345678">
                     </div>
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 10px; margin-top: auto;">
                     <button id="btn-download" class="btn">
-                        📧 사진 저장 후 지메일로 보내기
+                        💬 사진 저장 후 문자로 보내기
                     </button>
                     <button id="btn-retry" class="btn btn-secondary">
                         🔄 다시 촬영하기
@@ -445,16 +445,6 @@
 <div id="toast" class="toast">안내 메시지</div>
 
 <script>
-    // --- EmailJS Initialization ---
-    // 실제 서비스 시 본인의 EmailJS Public Key로 변경하실 수 있습니다.
-    (function(){
-        try {
-            emailjs.init("YOUR_PUBLIC_KEY"); // Placeholder for EmailJS public key
-        } catch(e) {
-            console.warn("EmailJS init failed:", e);
-        }
-    })();
-
     // --- Web Audio API (효과음 직접 구현) ---
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
@@ -514,25 +504,25 @@
     const countdownOverlay = document.getElementById('countdown');
     const flashOverlay = document.getElementById('flash');
     const finalCanvas = document.getElementById('finalCanvas');
-    const emailInput = document.getElementById('userEmail');
+    const phoneInput = document.getElementById('userPhone');
     const toast = document.getElementById('toast');
 
     // --- LocalStorage Integration ---
-    function loadSavedEmail() {
+    function loadSavedPhone() {
         try {
-            const savedEmail = localStorage.getItem('photo_booth_email');
-            if (savedEmail) {
-                state.userEmail = savedEmail;
-                emailInput.value = savedEmail;
+            const savedPhone = localStorage.getItem('photo_booth_phone');
+            if (savedPhone) {
+                state.userPhone = savedPhone;
+                phoneInput.value = savedPhone;
             }
         } catch (e) {
             console.warn('LocalStorage access failed:', e);
         }
     }
 
-    function saveEmail(email) {
+    function savePhone(phone) {
         try {
-            localStorage.setItem('photo_booth_email', email);
+            localStorage.setItem('photo_booth_phone', phone);
         } catch (e) {
             console.warn('LocalStorage save failed:', e);
         }
@@ -562,17 +552,13 @@
             });
             webcam.srcObject = state.stream;
             
-            // 비디오 메타데이터가 로드될 때까지 기다린 후 뷰를 전환합니다.
-            await new Promise((resolve) => {
-                webcam.onloadedmetadata = () => {
-                    webcam.play().then(resolve).catch(resolve);
-                };
-            });
-
+            // 비디오 메타데이터 로드 및 재생을 명시적으로 실행한 후 뷰를 전환합니다.
+            await webcam.play().catch(e => console.warn("Video play error:", e));
+            
             switchView('capture');
         } catch (err) {
             console.error('Camera access error:', err);
-            showToast('카메라 접근 권한이 필요하거나 연결할 수 없습니다.');
+            showToast('카메라 접근 권한이 필요하거나 연결할 수 없습니다. (HTTPS/localhost 권장)');
         }
     }
 
@@ -747,46 +733,46 @@
         ctx.fillText(today, canvasWidth / 2, canvasHeight - padding - 4);
     }
 
-    // --- Export & Download / Mail Handler ---
+    // --- Export & Download / SMS Handler ---
     function handleExport() {
-        const email = emailInput.value.trim();
-        if (email) {
-            saveEmail(email);
+        let phone = phoneInput.value.replace(/[^0-9]/g, ''); // 숫자만 추출
+        if (phone) {
+            savePhone(phone);
         }
 
-        // 1. 인생네컷 이미지 자동 다운로드
+        // 1. 인생네컷 이미지 자동 다운로드 (갤러리/저장소로)
         const link = document.createElement('a');
         const filename = `photo-booth-${Date.now()}.png`;
         link.download = filename;
         link.href = finalCanvas.toDataURL('image/png');
         link.click();
 
-        // 2. 구글 지메일(Gmail) 웹 작성 창으로 바로 연동
-        if (email) {
-            showToast('사진을 저장했습니다. 지메일 작성 창을 엽니다!');
+        // 2. 기본 문자(SMS/MMS) 앱으로 바로 연동
+        if (phone) {
+            showToast('사진을 저장했습니다. 문자 메시지 앱을 엽니다!');
             
-            const subject = encodeURIComponent("📸 [인생네컷] 웹에서 촬영한 네컷 사진입니다!");
-            const body = encodeURIComponent(
-                `안녕하세요!\n\n` +
-                `웹 인생네컷에서 촬영한 사진이 내 기기(다운로드 폴더)에 저장되었습니다.\n` +
-                `아래에 방금 다운로드된 사진 파일(${filename})을 첨부하여 전송해보세요!\n\n` +
-                `감사합니다.`
+            const messageBody = encodeURIComponent(
+                `📸 [인생네컷] 촬영한 사진이 저장되었습니다.\n` +
+                `다운로드된 사진 파일(${filename})을 첨부하여 전송해보세요!`
             );
             
-            // Gmail Web Compose URL
-            const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${subject}&body=${body}`;
+            // 모바일 OS 구분 (iOS/Android)
+            const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            const smsUrl = isiOS 
+                ? `sms:${phone}&body=${messageBody}` 
+                : `sms:${phone}?body=${messageBody}`;
 
             setTimeout(() => {
-                window.open(gmailUrl, '_blank');
+                window.location.href = smsUrl;
             }, 800);
         } else {
-            showToast('사진이 내 기기에 저장되었습니다. (이메일을 입력하시면 지메일 연동이 가능합니다)');
+            showToast('사진이 내 기기에 저장되었습니다. (전화번호를 입력하면 문자 앱이 열립니다)');
         }
     }
 
     // --- Event Listeners Setup ---
     document.addEventListener('DOMContentLoaded', () => {
-        loadSavedEmail();
+        loadSavedPhone();
 
         document.getElementById('btn-start').addEventListener('click', startCamera);
         document.getElementById('btn-shoot').addEventListener('click', startCaptureSequence);

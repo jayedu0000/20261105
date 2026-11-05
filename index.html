@@ -431,7 +431,7 @@
 
                 <div style="display: flex; flex-direction: column; gap: 10px; margin-top: auto;">
                     <button id="btn-download" class="btn">
-                        ✉️ 이메일로 인생네컷 전송하기
+                        📧 사진 저장 후 지메일로 보내기
                     </button>
                     <button id="btn-retry" class="btn btn-secondary">
                         🔄 다시 촬영하기
@@ -753,29 +753,40 @@
         const sendBtn = document.getElementById('btn-download');
         sendBtn.disabled = true;
         sendBtn.textContent = '⏳ 메일 전송 중...';
+    // --- Export & Download / Mail Handler ---
+    function handleExport() {
+        const email = emailInput.value.trim();
+        if (email) {
+            saveEmail(email);
+        }
 
-        try {
-            // Get Image Base64 Data URI
-            const imageDataUrl = finalCanvas.toDataURL('image/png');
+        // 1. 인생네컷 이미지 자동 다운로드
+        const link = document.createElement('a');
+        const filename = `photo-booth-${Date.now()}.png`;
+        link.download = filename;
+        link.href = finalCanvas.toDataURL('image/png');
+        link.click();
 
-            // EmailJS Service parameter payload
-            const templateParams = {
-                to_email: email,
-                photo_attachment: imageDataUrl,
-                message: "웹 인생네컷에서 촬영하신 네컷 사진이 첨부되었습니다."
-            };
-
-            // Attempt EmailJS Direct Send
-            await emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams);
-            showToast('✉️ 이메일로 인생네컷이 전송되었습니다!');
-        } catch (error) {
-            console.warn("EmailJS 전송 미설정 또는 오류:", error);
+        // 2. 구글 지메일(Gmail) 웹 작성 창으로 바로 연동
+        if (email) {
+            showToast('사진을 저장했습니다. 지메일 작성 창을 엽니다!');
             
-            // Fallback UI handling when EmailJS keys are default placeholders
-            showToast('✉️ 이메일 전송 처리 완료! (EmailJS 키 설정 필요)');
-        } finally {
-            sendBtn.disabled = false;
-            sendBtn.textContent = '✉️ 이메일로 인생네컷 전송하기';
+            const subject = encodeURIComponent("📸 [인생네컷] 웹에서 촬영한 네컷 사진입니다!");
+            const body = encodeURIComponent(
+                `안녕하세요!\n\n` +
+                `웹 인생네컷에서 촬영한 사진이 내 기기(다운로드 폴더)에 저장되었습니다.\n` +
+                `아래에 방금 다운로드된 사진 파일(${filename})을 첨부하여 전송해보세요!\n\n` +
+                `감사합니다.`
+            );
+            
+            // Gmail Web Compose URL
+            const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${subject}&body=${body}`;
+
+            setTimeout(() => {
+                window.open(gmailUrl, '_blank');
+            }, 800);
+        } else {
+            showToast('사진이 내 기기에 저장되었습니다. (이메일을 입력하시면 지메일 연동이 가능합니다)');
         }
     }
 

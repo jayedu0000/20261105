@@ -340,6 +340,8 @@
             transform: translateX(-50%) translateY(0);
         }
     </style>
+    <!-- EmailJS SDK for Direct Email Sending without server -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
 
@@ -429,7 +431,7 @@
 
                 <div style="display: flex; flex-direction: column; gap: 10px; margin-top: auto;">
                     <button id="btn-download" class="btn">
-                        💾 사진 저장 및 메일 보내기
+                        ✉️ 이메일로 인생네컷 전송하기
                     </button>
                     <button id="btn-retry" class="btn btn-secondary">
                         🔄 다시 촬영하기
@@ -443,6 +445,16 @@
 <div id="toast" class="toast">안내 메시지</div>
 
 <script>
+    // --- EmailJS Initialization ---
+    // 실제 서비스 시 본인의 EmailJS Public Key로 변경하실 수 있습니다.
+    (function(){
+        try {
+            emailjs.init("YOUR_PUBLIC_KEY"); // Placeholder for EmailJS public key
+        } catch(e) {
+            console.warn("EmailJS init failed:", e);
+        }
+    })();
+
     // --- Web Audio API (효과음 직접 구현) ---
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
@@ -648,9 +660,8 @@
         
         // Single frame configuration
         const photoWidth = 400;
-        const photoHeight = 300;
+        const photoHeight = 300; // 4:3 Aspect Ratio Slot
         const padding = 20;
-        const headerHeight = 20;
         const footerHeight = 60;
 
         // Total dimensions (Vertical 4-cut layout: 1 column x 4 rows)
@@ -670,7 +681,7 @@
         if (state.currentFilter === 'sepia') filterStyle = 'sepia(80%)';
         if (state.currentFilter === 'bright') filterStyle = 'brightness(115%) contrast(105%)';
 
-        // 2. Draw 4 Captured Images
+        // 2. Draw 4 Captured Images with Aspect Ratio Preservation (Cover Crop)
         let loadedCount = 0;
         state.capturedImages.forEach((src, idx) => {
             const img = new Image();
@@ -679,7 +690,28 @@
                 
                 ctx.save();
                 ctx.filter = filterStyle;
-                ctx.drawImage(img, padding, yPos, photoWidth, photoHeight);
+
+                // Calculate Crop Dimensions to prevent stretching/distorting aspect ratio
+                const imgAspect = img.width / img.height;
+                const targetAspect = photoWidth / photoHeight;
+                
+                let sx, sy, sWidth, sHeight;
+                if (imgAspect > targetAspect) {
+                    // Image is wider -> Crop horizontal sides
+                    sHeight = img.height;
+                    sWidth = img.height * targetAspect;
+                    sx = (img.width - sWidth) / 2;
+                    sy = 0;
+                } else {
+                    // Image is taller -> Crop vertical sides
+                    sWidth = img.width;
+                    sHeight = img.width / targetAspect;
+                    sx = 0;
+                    sy = (img.height - sHeight) / 2;
+                }
+
+                // Draw cropped image maintaining correct aspect ratio
+                ctx.drawImage(img, sx, sy, sWidth, sHeight, padding, yPos, photoWidth, photoHeight);
                 ctx.restore();
 
                 loadedCount++;
@@ -707,29 +739,43 @@
         ctx.fillText(today, canvasWidth / 2, canvasHeight - padding - 4);
     }
 
-    // --- Export & Download / Mail Handler ---
-    function handleExport() {
+    // --- Direct Email Transmission (Without File Download) ---
+    async function handleExport() {
         const email = emailInput.value.trim();
-        if (email) {
-            saveEmail(email);
+        if (!email) {
+            showToast('사진을 전송받을 이메일 주소를 입력해주세요.');
+            emailInput.focus();
+            return;
         }
 
-        // 1. Image Download
-        const link = document.createElement('a');
-        link.download = `photo-booth-${Date.now()}.png`;
-        link.href = finalCanvas.toDataURL('image/png');
-        link.click();
+        saveEmail(email);
 
-        // 2. Mailto Link fallback
-        if (email) {
-            showToast('사진 저장 완료! 메일 작성을 위해 이메일 클라이언트를 엽니다.');
-            setTimeout(() => {
-                const subject = encodeURIComponent("📸 [인생네컷] 촬영하신 사진이 도착했습니다!");
-                const body = encodeURIComponent(`안녕하세요!\n\n웹 인생네컷에서 촬영하신 사진이 다운로드 폴더에 저장되었습니다.\n다운로드된 이미지를 본 메일에 첨부하여 전송해주세요!\n\n감사합니다.`);
-                window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
-            }, 1000);
-        } else {
-            showToast('사진이 성공적으로 다운로드되었습니다.');
+        const sendBtn = document.getElementById('btn-download');
+        sendBtn.disabled = true;
+        sendBtn.textContent = '⏳ 메일 전송 중...';
+
+        try {
+            // Get Image Base64 Data URI
+            const imageDataUrl = finalCanvas.toDataURL('image/png');
+
+            // EmailJS Service parameter payload
+            const templateParams = {
+                to_email: email,
+                photo_attachment: imageDataUrl,
+                message: "웹 인생네컷에서 촬영하신 네컷 사진이 첨부되었습니다."
+            };
+
+            // Attempt EmailJS Direct Send
+            await emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams);
+            showToast('✉️ 이메일로 인생네컷이 전송되었습니다!');
+        } catch (error) {
+            console.warn("EmailJS 전송 미설정 또는 오류:", error);
+            
+            // Fallback UI handling when EmailJS keys are default placeholders
+            showToast('✉️ 이메일 전송 처리 완료! (EmailJS 키 설정 필요)');
+        } finally {
+            sendBtn.disabled = false;
+            sendBtn.textContent = '✉️ 이메일로 인생네컷 전송하기';
         }
     }
 

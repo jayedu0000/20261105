@@ -3,805 +3,499 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>웹 인생네컷 - Web Photo Booth</title>
+    <title>인생네컷 포토부스</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --accent-color: #ec4899;
-            --accent-hover: #db2777;
-            --text-color: #f8fafc;
-            --text-sub: #94a3b8;
-            --border-radius: 16px;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
-
         body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
+            font-family: 'Pretendard', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
         }
-
-        .container {
-            width: 100%;
-            max-width: 900px;
-            background: var(--card-bg);
-            border-radius: var(--border-radius);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            position: relative;
-            overflow: hidden;
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
         }
-
-        header {
-            text-align: center;
-            border-bottom: 1px solid #334155;
-            padding-bottom: 16px;
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
         }
-
-        header h1 {
-            font-size: 1.8rem;
-            color: var(--accent-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        header p {
-            font-size: 0.9rem;
-            color: var(--text-sub);
-            margin-top: 4px;
-        }
-
-        /* Views management */
-        .view {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            width: 100%;
-            animation: fadeIn 0.3s ease-in-out;
-        }
-
-        .view.active {
-            display: flex;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Buttons & Inputs */
-        .btn {
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
-        }
-
-        .btn:hover {
-            background-color: var(--accent-hover);
-            transform: translateY(-2px);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .btn-secondary {
-            background-color: #475569;
-            box-shadow: 0 4px 12px rgba(71, 85, 105, 0.3);
-        }
-
-        .btn-secondary:hover {
-            background-color: #334155;
-        }
-
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            width: 100%;
-            max-width: 400px;
-        }
-
-        .input-group label {
-            font-size: 0.9rem;
-            color: var(--text-sub);
-        }
-
-        .input-group input {
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #475569;
-            background-color: #0f172a;
-            color: white;
-            font-size: 1rem;
-            outline: none;
-        }
-
-        .input-group input:focus {
-            border-color: var(--accent-color);
-        }
-
-        /* Step 1: Start Screen */
-        .start-card {
-            text-align: center;
-            padding: 40px 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .icon-hero {
-            width: 80px;
-            height: 80px;
-            background: rgba(236, 72, 153, 0.1);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--accent-color);
-        }
-
-        /* Step 2: Camera View */
-        .camera-container {
-            position: relative;
-            width: 100%;
-            max-width: 480px;
-            aspect-ratio: 4/3;
-            background-color: #000;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.4);
-        }
-
-        #webcam {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1); /* Mirror view */
-        }
-
-        .countdown-overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.4);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            font-size: 5rem;
-            font-weight: 800;
-            color: #fff;
-            text-shadow: 0 0 20px rgba(0,0,0,0.8);
-        }
-
-        .flash-overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: white;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.1s ease-out;
-        }
-
-        .thumbnail-strip {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 10px;
-        }
-
-        .thumb-box {
-            width: 70px;
-            height: 70px;
-            border-radius: 8px;
-            border: 2px dashed #475569;
-            background-size: cover;
-            background-position: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-            color: var(--text-sub);
-        }
-
-        .thumb-box.active {
-            border: 2px solid var(--accent-color);
-        }
-
-        /* Step 3: Studio / Editor View */
-        .editor-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-            width: 100%;
-        }
-
-        @media (min-width: 768px) {
-            .editor-grid {
-                grid-template-columns: 320px 1fr;
-            }
-        }
-
-        .preview-area {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #0f172a;
-            padding: 16px;
-            border-radius: 12px;
-        }
-
-        #finalCanvas {
-            max-width: 100%;
-            height: auto;
-            max-height: 500px;
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
             border-radius: 4px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
         }
-
-        .controls-area {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .control-group {
-            background: #0f172a;
-            padding: 16px;
-            border-radius: 12px;
-        }
-
-        .control-group h3 {
-            font-size: 1rem;
-            margin-bottom: 10px;
-            color: var(--text-color);
-        }
-
-        .options-row {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .color-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 2px solid transparent;
-            cursor: pointer;
-            transition: transform 0.1s ease;
-        }
-
-        .color-btn:hover, .color-btn.active {
-            transform: scale(1.15);
-            border-color: #fff;
-        }
-
-        .filter-btn {
-            padding: 6px 12px;
-            border-radius: 8px;
-            background: #334155;
-            color: #fff;
-            border: none;
-            cursor: pointer;
-            font-size: 0.85rem;
-        }
-
-        .filter-btn.active {
-            background: var(--accent-color);
-        }
-
-        /* Notification toast */
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background: #334155;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 30px;
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
-            transition: transform 0.3s ease;
-            z-index: 1000;
-        }
-
-        .toast.show {
-            transform: translateX(-50%) translateY(0);
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
     </style>
-    <!-- EmailJS SDK for Direct Email Sending without server -->
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
-<body>
+<body class="min-h-screen flex flex-col items-center justify-between p-4 md:p-6">
 
-<div class="container">
-    <header>
-        <h1>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            인생네컷 Web Booth
-        </h1>
-        <p>웹캠으로 촬영하고 네컷 사진을 소장해보세요!</p>
+    <!-- Header -->
+    <header class="w-full max-w-4xl flex items-center justify-between bg-white px-6 py-4 rounded-2xl shadow-sm mb-4">
+        <div class="flex items-center space-x-2">
+            <span class="text-2xl">📸</span>
+            <h1 class="text-xl md:text-2xl font-extrabold bg-gradient-to-r from-pink-500 to-violet-600 bg-clip-text text-transparent">인생네컷 스튜디오</h1>
+        </div>
+        <button id="settings-btn" class="flex items-center space-x-1 px-3 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
+            <span>⚙️ GAS 설정</span>
+        </button>
     </header>
 
-    <!-- STEP 1: START -->
-    <div id="view-start" class="view active">
-        <div class="start-card">
-            <div class="icon-hero">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    <!-- Main Container -->
+    <main class="w-full max-w-4xl flex-1 flex flex-col items-center justify-center bg-white rounded-3xl shadow-md p-6 mb-4 relative overflow-hidden">
+
+        <!-- STEP 1: WELCOME & READY -->
+        <div id="step-ready" class="flex flex-col items-center text-center space-y-6 w-full py-8">
+            <div class="w-24 h-24 bg-pink-100 rounded-full flex items-center justify-center text-4xl shadow-inner animate-pulse">
+                ✨
             </div>
-            <h2>나만의 네컷 사진 만들기</h2>
-            <p style="color: var(--text-sub); max-width: 400px;">카메라 권한을 허용하신 후 3초 간격으로 연속 4장을 촬영합니다.</p>
-            <button id="btn-start" class="btn">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                촬영 시작하기
+            <div class="space-y-2">
+                <h2 class="text-2xl md:text-3xl font-extrabold text-slate-800">추억을 남기는 4컷 순간</h2>
+                <p class="text-slate-500 text-sm md:text-base">웹캠으로 실시간 촬영하고, 예쁜 프레임을 골라 이메일로 받아보세요!</p>
+            </div>
+            <button id="start-camera-btn" class="px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold text-lg rounded-2xl shadow-lg hover:opacity-95 transform hover:-translate-y-0.5 transition">
+                카메라 연결하고 촬영하기
             </button>
         </div>
-    </div>
 
-    <!-- STEP 2: CAPTURE -->
-    <div id="view-capture" class="view">
-        <div class="camera-container">
-            <video id="webcam" autoplay playsinline muted></video>
-            <div id="countdown" class="countdown-overlay">3</div>
-            <div id="flash" class="flash-overlay"></div>
-        </div>
-
-        <div class="thumbnail-strip">
-            <div class="thumb-box" id="thumb-0">1</div>
-            <div class="thumb-box" id="thumb-1">2</div>
-            <div class="thumb-box" id="thumb-2">3</div>
-            <div class="thumb-box" id="thumb-3">4</div>
-        </div>
-
-        <div style="display: flex; gap: 12px;">
-            <button id="btn-shoot" class="btn">
-                📸 촬영 시작 (자동 4회)
+        <!-- STEP 2: LIVE CAMERA & COUNTDOWN -->
+        <div id="step-camera" class="hidden flex-col items-center w-full space-y-4">
+            <div class="relative w-full max-w-md aspect-[3/4] bg-slate-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center">
+                <video id="webcam" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
+                <!-- Countdown Overlay -->
+                <div id="countdown-overlay" class="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-7xl font-black hidden">
+                    3
+                </div>
+                <!-- Captured Preview Grid Thumbnails -->
+                <div class="absolute bottom-4 right-4 flex flex-col space-y-2 bg-black/60 backdrop-blur-md p-2 rounded-xl">
+                    <div class="text-xs text-white/80 font-bold text-center">촬영 현황 (<span id="shot-count">0</span>/4)</div>
+                    <div id="mini-thumbs" class="grid grid-cols-2 gap-1.5 w-24">
+                        <div class="w-11 h-14 bg-slate-700 rounded border border-white/20 flex items-center justify-center text-xs text-white/40">1</div>
+                        <div class="w-11 h-14 bg-slate-700 rounded border border-white/20 flex items-center justify-center text-xs text-white/40">2</div>
+                        <div class="w-11 h-14 bg-slate-700 rounded border border-white/20 flex items-center justify-center text-xs text-white/40">3</div>
+                        <div class="w-11 h-14 bg-slate-700 rounded border border-white/20 flex items-center justify-center text-xs text-white/40">4</div>
+                    </div>
+                </div>
+            </div>
+            <button id="shoot-btn" class="px-8 py-3 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-2xl shadow-md transition">
+                촬영 시작 (3초 간격 4컷)
             </button>
         </div>
-    </div>
 
-    <!-- STEP 3: EDITOR & EXPORT -->
-    <div id="view-editor" class="view">
-        <div class="editor-grid">
-            <div class="preview-area">
-                <canvas id="finalCanvas"></canvas>
+        <!-- STEP 3: FRAME SELECTION & PREVIEW -->
+        <div id="step-edit" class="hidden flex-col md:flex-row items-center justify-center w-full gap-8 py-2">
+            <!-- Canvas Preview -->
+            <div class="flex flex-col items-center space-y-2">
+                <div class="p-3 bg-slate-100 rounded-2xl shadow-inner">
+                    <canvas id="result-canvas" class="rounded-xl shadow-md max-h-[480px] w-auto object-contain"></canvas>
+                </div>
+                <p class="text-xs text-slate-400">선택한 프레임이 실시간 합성됩니다.</p>
             </div>
 
-            <div class="controls-area">
-                <div class="control-group">
-                    <h3>🎨 프레임 배경색 선택</h3>
-                    <div class="options-row">
-                        <button class="color-btn active" style="background:#000000;" data-color="#000000"></button>
-                        <button class="color-btn" style="background:#ffffff;" data-color="#ffffff"></button>
-                        <button class="color-btn" style="background:#f472b6;" data-color="#f472b6"></button>
-                        <button class="color-btn" style="background:#38bdf8;" data-color="#38bdf8"></button>
-                        <button class="color-btn" style="background:#a78bfa;" data-color="#a78bfa"></button>
-                        <button class="color-btn" style="background:#4ade80;" data-color="#4ade80"></button>
+            <!-- Frame Options & Actions -->
+            <div class="flex flex-col space-y-6 w-full max-w-xs">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-700 mb-3">🎨 프레임 테마 선택</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button class="frame-option-btn p-3 rounded-xl border-2 border-pink-500 bg-pink-50 text-pink-700 font-semibold text-sm transition" data-frame="white">클래식 화이트</button>
+                        <button class="frame-option-btn p-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-600 font-semibold text-sm transition" data-frame="black">시크 블랙</button>
+                        <button class="frame-option-btn p-3 rounded-xl border-2 border-slate-200 bg-amber-50 text-amber-800 font-semibold text-sm transition" data-frame="retro">레트로 감성</button>
+                        <button class="frame-option-btn p-3 rounded-xl border-2 border-slate-200 bg-violet-50 text-violet-700 font-semibold text-sm transition" data-frame="pastel">파스텔 드림</button>
                     </div>
                 </div>
 
-                <div class="control-group">
-                    <h3>📷 필터 효과</h3>
-                    <div class="options-row">
-                        <button class="filter-btn active" data-filter="none">원본</button>
-                        <button class="filter-btn" data-filter="grayscale">클래식 흑백</button>
-                        <button class="filter-btn" data-filter="sepia">빈티지 세피아</button>
-                        <button class="filter-btn" data-filter="bright">화사하게</button>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <h3>📱 휴대폰 번호 입력 (사진 받기)</h3>
-                    <div class="input-group">
-                        <label for="userPhone">휴대폰 번호</label>
-                        <input type="tel" id="userPhone" placeholder="01012345678">
-                    </div>
-                </div>
-
-                <div style="display: flex; flex-direction: column; gap: 10px; margin-top: auto;">
-                    <button id="btn-download" class="btn">
-                        💬 사진 저장 후 문자로 보내기
+                <!-- Email Form -->
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                    <h3 class="text-sm font-bold text-slate-700">✉️ 이메일로 전송하기</h3>
+                    <input type="email" id="email-input" placeholder="받을 이메일 주소 입력" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500">
+                    <button id="send-email-btn" class="w-full py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm rounded-xl shadow transition">
+                        이메일 발송
                     </button>
-                    <button id="btn-retry" class="btn btn-secondary">
-                        🔄 다시 촬영하기
+                </div>
+
+                <!-- Additional Actions -->
+                <div class="flex space-x-2">
+                    <button id="download-btn" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-semibold text-sm rounded-xl transition">
+                        📥 기기 저장
+                    </button>
+                    <button id="retake-btn" class="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-sm rounded-xl transition">
+                        다시 촬영
                     </button>
                 </div>
             </div>
         </div>
+
+        <!-- Notification Banner -->
+        <div id="toast" class="absolute bottom-4 bg-slate-900/90 text-white px-4 py-2.5 rounded-xl text-sm shadow-xl transition-all duration-300 transform translate-y-20 opacity-0 pointer-events-none">
+            알림 메시지 텍스트
+        </div>
+    </main>
+
+    <!-- GAS Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 m-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">구글 앱스 스크립트(GAS) 설정</h3>
+                <button id="close-modal-btn" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+            </div>
+            <p class="text-xs text-slate-500 leading-relaxed">
+                이메일 전송 기능을 사용하려면 Google Apps Script 웹앱 URL을 입력해주세요. 미설정 시 기기 다운로드 기능만 이용 가능합니다.
+            </p>
+            <input type="text" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500">
+            <div class="flex space-x-2 pt-2">
+                <button id="save-settings-btn" class="flex-1 py-2.5 bg-pink-500 hover:bg-pink-600 text-white font-semibold text-sm rounded-xl transition">저장하기</button>
+                <button id="clear-settings-btn" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-sm rounded-xl transition">설정 초기화</button>
+            </div>
+        </div>
     </div>
-</div>
 
-<div id="toast" class="toast">안내 메시지</div>
+    <!-- Footer -->
+    <footer class="w-full max-w-4xl text-center text-xs text-slate-400 py-2">
+        &copy; Web Four-Cut Photo Booth. Serverless & Client-Side Powered.
+    </h2>
+    </footer>
 
-<script>
-    // --- Web Audio API (효과음 직접 구현) ---
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
-    function playBeep(freq = 440, type = 'sine', duration = 0.1) {
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + duration);
-    }
+    <!-- Application Script -->
+    <script>
+        // DOM Elements
+        const stepReady = document.getElementById('step-ready');
+        const stepCamera = document.getElementById('step-camera');
+        const stepEdit = document.getElementById('step-edit');
+        const startCameraBtn = document.getElementById('start-camera-btn');
+        const webcam = document.getElementById('webcam');
+        const shootBtn = document.getElementById('shoot-btn');
+        const countdownOverlay = document.getElementById('countdown-overlay');
+        const shotCountEl = document.getElementById('shot-count');
+        const miniThumbs = document.getElementById('mini-thumbs');
+        const resultCanvas = document.getElementById('result-canvas');
+        const downloadBtn = document.getElementById('download-btn');
+        const retakeBtn = document.getElementById('retake-btn');
+        const emailInput = document.getElementById('email-input');
+        const sendEmailBtn = document.getElementById('send-email-btn');
+        const toast = document.getElementById('toast');
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsModal = document.getElementById('settings-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const gasUrlInput = document.getElementById('gas-url-input');
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+        const clearSettingsBtn = document.getElementById('clear-settings-btn');
+        const frameOptionBtns = document.querySelectorAll('.frame-option-btn');
 
-    function playShutterSound() {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        // White noise for shutter
-        const bufferSize = audioCtx.sampleRate * 0.1;
-        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1;
-        }
-        const noise = audioCtx.createBufferSource();
-        noise.buffer = buffer;
-        const gain = audioCtx.createGain();
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-        noise.connect(gain);
-        gain.connect(audioCtx.destination);
-        noise.start();
-    }
+        // State variables
+        let mediaStream = null;
+        let capturedImages = [];
+        let currentFrameTheme = 'white';
+        let gasEndpointUrl = localStorage.getItem('gas_endpoint_url') || '';
 
-    // --- State Management ---
-    const state = {
-        currentView: 'start',
-        stream: null,
-        capturedImages: [],
-        frameColor: '#000000',
-        currentFilter: 'none',
-        userEmail: ''
-    };
+        // Web Audio API Shutter Sound Generator
+        function playShutterSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
 
-    // --- DOM Elements ---
-    const views = {
-        start: document.getElementById('view-start'),
-        capture: document.getElementById('view-capture'),
-        editor: document.getElementById('view-editor')
-    };
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.15);
 
-    const webcam = document.getElementById('webcam');
-    const countdownOverlay = document.getElementById('countdown');
-    const flashOverlay = document.getElementById('flash');
-    const finalCanvas = document.getElementById('finalCanvas');
-    const phoneInput = document.getElementById('userPhone');
-    const toast = document.getElementById('toast');
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
 
-    // --- LocalStorage Integration ---
-    function loadSavedPhone() {
-        try {
-            const savedPhone = localStorage.getItem('photo_booth_phone');
-            if (savedPhone) {
-                state.userPhone = savedPhone;
-                phoneInput.value = savedPhone;
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } catch (e) {
+                console.log('Audio Context not supported or blocked', e);
             }
-        } catch (e) {
-            console.warn('LocalStorage access failed:', e);
-        }
-    }
-
-    function savePhone(phone) {
-        try {
-            localStorage.setItem('photo_booth_phone', phone);
-        } catch (e) {
-            console.warn('LocalStorage save failed:', e);
-        }
-    }
-
-    // --- Toast UI ---
-    function showToast(msg) {
-        toast.textContent = msg;
-        toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 3000);
-    }
-
-    // --- View Navigation ---
-    function switchView(viewName) {
-        Object.keys(views).forEach(key => {
-            views[key].classList.toggle('active', key === viewName);
-        });
-        state.currentView = viewName;
-    }
-
-    // --- Camera Control ---
-    async function startCamera() {
-        try {
-            state.stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: { ideal: 1280 }, height: { ideal: 960 }, facingMode: "user" },
-                audio: false
-            });
-            webcam.srcObject = state.stream;
-            
-            // 비디오 메타데이터 로드 및 재생을 명시적으로 실행한 후 뷰를 전환합니다.
-            await webcam.play().catch(e => console.warn("Video play error:", e));
-            
-            switchView('capture');
-        } catch (err) {
-            console.error('Camera access error:', err);
-            showToast('카메라 접근 권한이 필요하거나 연결할 수 없습니다. (HTTPS/localhost 권장)');
-        }
-    }
-
-    function stopCamera() {
-        if (state.stream) {
-            state.stream.getTracks().forEach(track => track.stop());
-            state.stream = null;
-        }
-    }
-
-    // --- Capture Sequence ---
-    async function startCaptureSequence() {
-        state.capturedImages = [];
-        resetThumbnails();
-        document.getElementById('btn-shoot').disabled = true;
-
-        for (let i = 0; i < 4; i++) {
-            await runCountdown(3);
-            triggerFlash();
-            playShutterSound();
-            capturePhoto(i);
-            await new Promise(r => setTimeout(r, 800)); // Pause between shots
         }
 
-        document.getElementById('btn-shoot').disabled = false;
-        stopCamera();
-        renderFinalCanvas();
-        switchView('editor');
-    }
-
-    function runCountdown(seconds) {
-        return new Promise((resolve) => {
-            countdownOverlay.style.display = 'flex';
-            let count = seconds;
-            countdownOverlay.textContent = count;
-            playBeep(600, 'sine', 0.1);
-
-            const interval = setInterval(() => {
-                count--;
-                if (count > 0) {
-                    countdownOverlay.textContent = count;
-                    playBeep(600, 'sine', 0.1);
-                } else {
-                    clearInterval(interval);
-                    countdownOverlay.style.display = 'none';
-                    playBeep(900, 'sine', 0.2);
-                    resolve();
-                }
-            }, 1000);
-        });
-    }
-
-    function triggerFlash() {
-        flashOverlay.style.opacity = '1';
-        setTimeout(() => {
-            flashOverlay.style.opacity = '0';
-        }, 150);
-    }
-
-    function capturePhoto(index) {
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = webcam.videoWidth || 640;
-        tempCanvas.height = webcam.videoHeight || 480;
-        const ctx = tempCanvas.getContext('2d');
-
-        // Mirror horizontal capture to match preview
-        ctx.translate(tempCanvas.width, 0);
-        ctx.scale(-1, 1);
-        ctx.drawImage(webcam, 0, 0, tempCanvas.width, tempCanvas.height);
-
-        const dataUrl = tempCanvas.toDataURL('image/png');
-        state.capturedImages.push(dataUrl);
-
-        // Update thumbnail UI
-        const thumb = document.getElementById(`thumb-${index}`);
-        thumb.style.backgroundImage = `url(${dataUrl})`;
-        thumb.textContent = '';
-        thumb.classList.add('active');
-    }
-
-    function resetThumbnails() {
-        for (let i = 0; i < 4; i++) {
-            const thumb = document.getElementById(`thumb-${i}`);
-            thumb.style.backgroundImage = 'none';
-            thumb.textContent = i + 1;
-            thumb.classList.remove('active');
-        }
-    }
-
-    // --- Render Final 4-Cut Image ---
-    function renderFinalCanvas() {
-        const ctx = finalCanvas.getContext('2d');
-        
-        // Single frame configuration
-        const photoWidth = 400;
-        const photoHeight = 300; // 4:3 Aspect Ratio Slot
-        const padding = 20;
-        const footerHeight = 60;
-
-        // Total dimensions (Vertical 4-cut layout: 1 column x 4 rows)
-        const canvasWidth = photoWidth + (padding * 2);
-        const canvasHeight = (photoHeight * 4) + (padding * 5) + footerHeight;
-
-        finalCanvas.width = canvasWidth;
-        finalCanvas.height = canvasHeight;
-
-        // 1. Draw Background
-        ctx.fillStyle = state.frameColor;
-        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-        // Filter Setup
-        let filterStyle = 'none';
-        if (state.currentFilter === 'grayscale') filterStyle = 'grayscale(100%)';
-        if (state.currentFilter === 'sepia') filterStyle = 'sepia(80%)';
-        if (state.currentFilter === 'bright') filterStyle = 'brightness(115%) contrast(105%)';
-
-        // 2. Draw 4 Captured Images with Aspect Ratio Preservation (Cover Crop)
-        let loadedCount = 0;
-        state.capturedImages.forEach((src, idx) => {
-            const img = new Image();
-            img.onload = () => {
-                const yPos = padding + idx * (photoHeight + padding);
-                
-                ctx.save();
-                ctx.filter = filterStyle;
-
-                // Calculate Crop Dimensions to prevent stretching/distorting aspect ratio
-                const imgAspect = img.width / img.height;
-                const targetAspect = photoWidth / photoHeight;
-                
-                let sx, sy, sWidth, sHeight;
-                if (imgAspect > targetAspect) {
-                    // Image is wider -> Crop horizontal sides
-                    sHeight = img.height;
-                    sWidth = img.height * targetAspect;
-                    sx = (img.width - sWidth) / 2;
-                    sy = 0;
-                } else {
-                    // Image is taller -> Crop vertical sides
-                    sWidth = img.width;
-                    sHeight = img.width / targetAspect;
-                    sx = 0;
-                    sy = (img.height - sHeight) / 2;
-                }
-
-                // Draw cropped image maintaining correct aspect ratio
-                ctx.drawImage(img, sx, sy, sWidth, sHeight, padding, yPos, photoWidth, photoHeight);
-                ctx.restore();
-
-                loadedCount++;
-                if (loadedCount === 4) {
-                    drawFooterText(ctx, canvasWidth, canvasHeight, padding);
-                }
-            };
-            img.src = src;
-        });
-    }
-
-    function drawFooterText(ctx, canvasWidth, canvasHeight, padding) {
-        // Text Color Adjustment based on Frame Background
-        const isWhite = state.frameColor === '#ffffff';
-        ctx.fillStyle = isWhite ? '#000000' : '#ffffff';
-        
-        // Date & Branding
-        const today = new Date().toISOString().split('T')[0].replace(/-/g, '.');
-        ctx.font = 'bold 16px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('LIFE 4 CUTS', canvasWidth / 2, canvasHeight - padding - 20);
-
-        ctx.font = '12px sans-serif';
-        ctx.fillStyle = isWhite ? '#666666' : '#aaaaaa';
-        ctx.fillText(today, canvasWidth / 2, canvasHeight - padding - 4);
-    }
-
-    // --- Export & Download / SMS Handler ---
-    function handleExport() {
-        let phone = phoneInput.value.replace(/[^0-9]/g, ''); // 숫자만 추출
-        if (phone) {
-            savePhone(phone);
-        }
-
-        // 1. 인생네컷 이미지 자동 다운로드 (갤러리/저장소로)
-        const link = document.createElement('a');
-        const filename = `photo-booth-${Date.now()}.png`;
-        link.download = filename;
-        link.href = finalCanvas.toDataURL('image/png');
-        link.click();
-
-        // 2. 기본 문자(SMS/MMS) 앱으로 바로 연동
-        if (phone) {
-            showToast('사진을 저장했습니다. 문자 메시지 앱을 엽니다!');
-            
-            const messageBody = encodeURIComponent(
-                `📸 [인생네컷] 촬영한 사진이 저장되었습니다.\n` +
-                `다운로드된 사진 파일(${filename})을 첨부하여 전송해보세요!`
-            );
-            
-            // 모바일 OS 구분 (iOS/Android)
-            const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-            const smsUrl = isiOS 
-                ? `sms:${phone}&body=${messageBody}` 
-                : `sms:${phone}?body=${messageBody}`;
-
+        // Toast notification helper
+        function showToast(message, duration = 3000) {
+            toast.textContent = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
             setTimeout(() => {
-                window.location.href = smsUrl;
-            }, 800);
-        } else {
-            showToast('사진이 내 기기에 저장되었습니다. (전화번호를 입력하면 문자 앱이 열립니다)');
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, duration);
         }
-    }
 
-    // --- Event Listeners Setup ---
-    document.addEventListener('DOMContentLoaded', () => {
-        loadSavedPhone();
-
-        document.getElementById('btn-start').addEventListener('click', startCamera);
-        document.getElementById('btn-shoot').addEventListener('click', startCaptureSequence);
-        document.getElementById('btn-download').addEventListener('click', handleExport);
-
-        document.getElementById('btn-retry').addEventListener('click', () => {
-            switchView('start');
+        // Camera Initialization
+        startCameraBtn.addEventListener('click', async () => {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+                    audio: false
+                });
+                webcam.srcObject = mediaStream;
+                stepReady.classList.add('hidden');
+                stepCamera.classList.remove('hidden');
+                stepCamera.classList.add('flex');
+            } catch (err) {
+                console.error('Webcam error:', err);
+                showToast('카메라 접근 권한이 거부되었거나 지원하지 않는 기기입니다.');
+            }
         });
 
-        // Frame Color Selection
-        document.querySelectorAll('.color-btn').forEach(btn => {
+        // 4-Cut Sequence Shooting Logic
+        shootBtn.addEventListener('click', async () => {
+            shootBtn.disabled = true;
+            capturedImages = [];
+            updateMiniThumbs();
+
+            for (let i = 1; i <= 4; i++) {
+                // Countdown 3, 2, 1
+                countdownOverlay.classList.remove('hidden');
+                for (let c = 3; c > 0; c--) {
+                    countdownOverlay.textContent = c;
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+                countdownOverlay.classList.add('hidden');
+
+                // Capture Frame
+                playShutterSound();
+                const canvasTemp = document.createElement('canvas');
+                canvasTemp.width = webcam.videoWidth || 640;
+                canvasTemp.height = webcam.videoHeight || 480;
+                const ctxTemp = canvasTemp.getContext('2d');
+                
+                // Mirror image horizontally since video preview is mirrored
+                ctxTemp.translate(canvasTemp.width, 0);
+                ctxTemp.scale(-1, 1);
+                ctxTemp.drawImage(webcam, 0, 0, canvasTemp.width, canvasTemp.height);
+
+                capturedImages.push(canvasTemp.toDataURL('image/png'));
+                shotCountEl.textContent = i;
+                updateMiniThumbs();
+
+                if (i < 4) {
+                    await new Promise(r => setTimeout(r, 800)); // Interval between shots
+                }
+            }
+
+            // Stop Camera stream after 4 shots
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+
+            // Move to Edit Step
+            stepCamera.classList.remove('flex');
+            stepCamera.classList.add('hidden');
+            stepEdit.classList.remove('hidden');
+            stepEdit.classList.add('flex');
+            shootBtn.disabled = false;
+            shotCountEl.textContent = '0';
+
+            renderCompositeCanvas();
+        });
+
+        // Update Mini Thumbnails UI during capture
+        function updateMiniThumbs() {
+            const thumbDivs = miniThumbs.querySelectorAll('div');
+            thumbDivs.forEach((div, idx) => {
+                div.innerHTML = '';
+                if (capturedImages[idx]) {
+                    const img = document.createElement('img');
+                    img.src = capturedImages[idx];
+                    img.className = 'w-full h-full object-cover rounded';
+                    div.appendChild(img);
+                } else {
+                    div.textContent = idx + 1;
+                    div.className = 'w-11 h-14 bg-slate-700 rounded border border-white/20 flex items-center justify-center text-xs text-white/40';
+                }
+            });
+        }
+
+        // Render Canvas Composite (4-cut + Frame Design)
+        function renderCompositeCanvas() {
+            const canvas = resultCanvas;
+            const ctx = canvas.getContext('2d');
+
+            // Standard photo booth dimensions
+            const photoWidth = 600;
+            const photoHeight = 450;
+            const padding = 40;
+            const gap = 30;
+            const headerHeight = 110;
+            const footerHeight = 70;
+
+            canvas.width = photoWidth + (padding * 2);
+            canvas.height = headerHeight + (photoHeight * 4) + (gap * 3) + footerHeight;
+
+            // Frame themes configuration
+            let bgColor = '#FFFFFF';
+            let textColor = '#1e293b';
+            let accentColor = '#f1f5f9';
+            let titleText = 'LIFE FOUR CUTS';
+
+            if (currentFrameTheme === 'black') {
+                bgColor = '#111827';
+                textColor = '#F9FAFB';
+                accentColor = '#1F2937';
+            } else if (currentFrameTheme === 'retro') {
+                bgColor = '#FEF3C7';
+                textColor = '#78350F';
+                accentColor = '#FDE68A';
+                titleText = 'RETRO MEMORIES';
+            } else if (currentFrameTheme === 'pastel') {
+                bgColor = '#F3E8FF';
+                textColor = '#581C87';
+                accentColor = '#E9D5FF';
+                titleText = 'SWEET MOMENTS';
+            }
+
+            // 1. Draw Background
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 2. Draw Header Title
+            ctx.fillStyle = textColor;
+            ctx.font = 'bold 28px "Pretendard", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(titleText, canvas.width / 2, 55);
+
+            ctx.font = '14px "Pretendard", sans-serif';
+            ctx.fillStyle = currentFrameTheme === 'black' ? '#9CA3AF' : '#64748B';
+            ctx.fillText(new Date().toLocaleDateString() + ' · Web Photo Booth', canvas.width / 2, 85);
+
+            // 3. Load & Draw 4 Photos
+            let loadedCount = 0;
+            if (capturedImages.length < 4) return;
+
+            for (let i = 0; i < 4; i++) {
+                const img = new Image();
+                img.onload = () => {
+                    const yPos = headerHeight + (i * (photoHeight + gap));
+                    
+                    // Photo Inner Container Background
+                    ctx.fillStyle = accentColor;
+                    ctx.fillRect(padding - 10, yPos - 10, photoWidth + 20, photoHeight + 20);
+
+                    // Draw Photo
+                    ctx.drawImage(img, padding, yPos, photoWidth, photoHeight);
+
+                    loadedCount++;
+                    if (loadedCount === 4) {
+                        // 4. Draw Footer Branding
+                        ctx.fillStyle = textColor;
+                        ctx.font = 'bold 16px "Pretendard", sans-serif';
+                        ctx.fillText('✨ Happy Memories With You ✨', canvas.width / 2, canvas.height - 30);
+                    }
+                };
+                img.src = capturedImages[i];
+            }
+        }
+
+        // Frame Selection Event Listeners
+        frameOptionBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                state.frameColor = e.target.dataset.color;
-                renderFinalCanvas();
+                frameOptionBtns.forEach(b => {
+                    b.classList.remove('border-pink-500', 'bg-pink-50', 'text-pink-700', 'border-amber-500', 'bg-amber-50', 'text-amber-800', 'border-violet-500', 'bg-violet-50', 'text-violet-700');
+                    b.classList.add('border-slate-200', 'bg-slate-50', 'text-slate-600');
+                });
+                const theme = e.currentTarget.getAttribute('data-frame');
+                currentFrameTheme = theme;
+                
+                if (theme === 'white') {
+                    e.currentTarget.classList.add('border-pink-500', 'bg-pink-50', 'text-pink-700');
+                } else if (theme === 'black') {
+                    e.currentTarget.classList.add('border-slate-800', 'bg-slate-900', 'text-white');
+                } else if (theme === 'retro') {
+                    e.currentTarget.classList.add('border-amber-500', 'bg-amber-50', 'text-amber-800');
+                } else if (theme === 'pastel') {
+                    e.currentTarget.classList.add('border-violet-500', 'bg-violet-50', 'text-violet-700');
+                }
+                e.currentTarget.classList.remove('border-slate-200', 'bg-slate-50', 'text-slate-600');
+
+                renderCompositeCanvas();
             });
         });
 
-        // Filter Selection
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                state.currentFilter = e.target.dataset.filter;
-                renderFinalCanvas();
-            });
+        // Download Image Locally
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = `four-cut-${Date.now()}.png`;
+            link.href = resultCanvas.toDataURL('image/png');
+            link.click();
+            showToast('사진이 기기에 저장되었습니다!');
         });
-    });
-</script>
+
+        // Retake Photo Button
+        retakeBtn.addEventListener('click', async () => {
+            stepEdit.classList.remove('flex');
+            stepEdit.classList.add('hidden');
+            stepReady.classList.remove('hidden');
+            stepReady.classList.add('flex');
+            capturedImages = [];
+        });
+
+        // GAS Settings Modal Management
+        settingsBtn.addEventListener('click', () => {
+            gasUrlInput.value = gasEndpointUrl;
+            settingsModal.classList.remove('hidden');
+        });
+        closeModalBtn.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+        });
+        saveSettingsBtn.addEventListener('click', () => {
+            gasEndpointUrl = gasUrlInput.value.trim();
+            localStorage.setItem('gas_endpoint_url', gasEndpointUrl);
+            settingsModal.classList.add('hidden');
+            showToast('GAS 설정이 저장되었습니다.');
+        });
+        clearSettingsBtn.addEventListener('click', () => {
+            gasEndpointUrl = '';
+            localStorage.removeItem('gas_endpoint_url');
+            gasUrlInput.value = '';
+            settingsModal.classList.add('hidden');
+            showToast('설정이 초기화되었습니다.');
+        });
+
+        // Email Sending via Google Apps Script (GAS)
+        sendEmailBtn.addEventListener('click', async () => {
+            const email = emailInput.value.trim();
+            if (!email || !email.includes('@')) {
+                showToast('올바른 이메일 주소를 입력해주세요.');
+                return;
+            }
+
+            if (!gasEndpointUrl) {
+                showToast('우측 상단 ⚙️ 설정에서 구글 앱스 스크립트(GAS) URL을 먼저 등록해주세요.');
+                settingsModal.classList.remove('hidden');
+                return;
+            }
+
+            sendEmailBtn.disabled = true;
+            sendEmailBtn.textContent = '발송 중...';
+
+            try {
+                const imageData = resultCanvas.toDataURL('image/png');
+                const response = await fetch(gasEndpointUrl, {
+                    method: 'POST',
+                    mode: 'no-cors', // Standard Google Apps Script Web App constraint
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        image: imageData
+                    })
+                });
+
+                showToast('이메일 전송 요청이 완료되었습니다! 수신함을 확인해주세요.');
+                emailInput.value = '';
+            } catch (err) {
+                console.error('Email send error:', err);
+                showToast('이메일 전송 중 오류가 발생했습니다.');
+            } finally {
+                sendEmailBtn.disabled = false;
+                sendEmailBtn.textContent = '이메일 발송';
+            }
+        });
+    </script>
 </body>
 </html>

@@ -333,4 +333,297 @@
             <button class="btn btn-secondary" onclick="location.reload()">다시 촬영하기</button>
         </div>
 
-        <!-- STEP
+        <!-- STEP 4: 이메일 전송 -->
+        <div id="step-email" class="step-section">
+            <div class="view-container" style="height: 250px; margin-bottom: 10px;">
+                <canvas id="thumb-canvas" style="object-fit: contain; transform: none;"></canvas>
+            </div>
+            <div class="input-group">
+                <label for="email-input">받으실 이메일 주소</label>
+                <input type="email" id="email-input" placeholder="example@email.com">
+            </div>
+            <button class="btn" id="send-email-btn">사진 전송하기</button>
+            <div id="loading-container" class="hidden">
+                <div class="spinner"></div>
+                <p style="text-align: center; font-size: 0.9rem; color: #666;">이메일로 전송 중입니다...</p>
+            </div>
+            <button class="btn btn-secondary" onclick="showStep('step-edit')" style="margin-top: 5px;">프레임 다시 고르기</button>
+        </div>
+
+        <!-- GAS 설정 모달/영역 -->
+        <div id="settings-area" class="hidden" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+            <div class="input-group">
+                <label style="font-size:0.85rem;">Google Apps Script Web App URL</label>
+                <input type="text" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec" style="font-size: 0.85rem; padding: 8px;">
+            </div>
+            <button class="btn" style="padding: 8px; font-size: 0.85rem;" onclick="saveGasUrl()">저장하기</button>
+        </div>
+
+    </div>
+
+    <script>
+        // ==========================================
+        // 📌 [프레임 설정 영역] 깃허브 frames 폴더 안의 이미지 리스트
+        // ==========================================
+        const FRAME_LIST = [
+            { id: 'frame1', name: '기본 2x2 프레임', path: 'frames/frame1.png' }
+            // 💡 나중에 새 프레임을 올리시면 아래처럼 쉼표(,)를 치고 줄을 추가하세요!
+            // { id: 'frame2', name: '호박 프레임', path: 'frames/frame2.png' }
+        ];
+
+        let currentFrameIndex = 0;
+        let capturedImages = [];
+        let videoStream = null;
+        let gasWebappUrl = localStorage.getItem('gas_url') || '';
+
+        const webcam = document.getElementById('webcam');
+        const shootVideo = document.getElementById('shoot-video');
+        const startBtn = document.getElementById('start-btn');
+        const countdownEl = document.getElementById('countdown');
+        const shootStatus = document.getElementById('shoot-status');
+        const resultCanvas = document.getElementById('result-canvas');
+        const thumbCanvas = document.getElementById('thumb-canvas');
+        const frameListEl = document.getElementById('frame-list');
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initWebcam();
+            initFrameSelector();
+            if(gasWebappUrl) {
+                document.getElementById('gas-url-input').value = gasWebappUrl;
+            }
+        });
+
+        async function initWebcam() {
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" }, 
+                    audio: false 
+                });
+                webcam.srcObject = videoStream;
+                shootVideo.srcObject = videoStream;
+            } catch (err) {
+                alert("웹캠 권한이 거부되었거나 카메라를 찾을 수 없습니다. 브라우저 설정을 확인해주세요.");
+                console.error(err);
+            }
+        }
+
+        function initFrameSelector() {
+            frameListEl.innerHTML = '';
+            FRAME_LIST.forEach((frame, idx) => {
+                const opt = document.createElement('div');
+                opt.className = `frame-option ${idx === currentFrameIndex ? 'selected' : ''}`;
+                opt.innerHTML = `
+                    <img src="${frame.path}" alt="${frame.name}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'70\' height=\'90\'><rect width=\'100%\' height=\'100%\' fill=\'%23eee\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-size=\'10\' fill=\'%23aaa\'>프레임</text></svg>'">
+                    <span>${frame.name}</span>
+                `;
+                opt.addEventListener('click', () => {
+                    document.querySelectorAll('.frame-option').forEach(el => el.classList.remove('selected'));
+                    opt.classList.add('selected');
+                    currentFrameIndex = idx;
+                    renderCompositeImage();
+                });
+                frameListEl.appendChild(opt);
+            });
+        }
+
+        function showStep(stepId) {
+            document.querySelectorAll('.step-section').forEach(sec => sec.classList.remove('active'));
+            document.getElementById(stepId).classList.add('active');
+        }
+
+        function playShutterSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(800, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.1);
+            } catch(e) {}
+        }
+
+        startBtn.addEventListener('click', async () => {
+            showStep('step-shooting');
+            capturedImages = [];
+            document.querySelectorAll('.preview-thumb').forEach(thumb => thumb.innerHTML = '');
+            
+            for (let i = 0; i < 4; i++) {
+                shootStatus.innerText = `${i + 1}번째 사진 촬영 중...`;
+                await runCountdown();
+                playShutterSound();
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = shootVideo.videoWidth || 640;
+                canvas.height = shootVideo.videoHeight || 480;
+                const ctx = canvas.getContext('2d');
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(shootVideo, 0, 0, canvas.width, canvas.height);
+                
+                capturedImages.push(canvas);
+                
+                const thumbContainer = document.querySelectorAll('.preview-thumb')[i];
+                thumbContainer.innerHTML = `<img src="${canvas.toDataURL('image/png')}" />`;
+                
+                if (i < 3) await wait(1000);
+            }
+
+            shootStatus.innerText = "촬영 완료! 프레임 합성 중...";
+            await wait(500);
+            renderCompositeImage();
+            showStep('step-edit');
+        });
+
+        function runCountdown() {
+            return new Promise(resolve => {
+                countdownEl.classList.remove('hidden');
+                let count = 3;
+                countdownEl.innerText = count;
+                const timer = setInterval(() => {
+                    count--;
+                    if (count > 0) {
+                        countdownEl.innerText = count;
+                    } else {
+                        clearInterval(timer);
+                        countdownEl.classList.add('hidden');
+                        resolve();
+                    }
+                }, 1000);
+            });
+        }
+
+        function wait(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // 3. Canvas 2x2 격자 맞춤 합성 엔진
+        function renderCompositeImage() {
+            const width = 1200;  
+            const height = 1500; 
+            
+            resultCanvas.width = width;
+            resultCanvas.height = height;
+            const ctx = resultCanvas.getContext('2d');
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+
+            // 📌 2x2 칸 위치 좌표 (좌상, 우상, 좌하, 우하)
+            const slots = [
+                { x: 30,  y: 30,  w: 550, h: 700 }, // 1번: 왼쪽 위
+                { x: 620, y: 30,  w: 550, h: 700 }, // 2번: 오른쪽 위
+                { x: 30,  y: 760, w: 550, h: 700 }, // 3번: 왼쪽 아래
+                { x: 620, y: 760, w: 550, h: 700 }  // 4번: 오른쪽 아래
+            ];
+
+            // 1단계: 사진 4장을 2x2 각각의 위치에 맞게 먼저 그리기
+            capturedImages.forEach((imgCanvas, index) => {
+                if (!slots[index]) return;
+                const slot = slots[index];
+
+                const imgAspect = imgCanvas.width / imgCanvas.height;
+                const targetAspect = slot.w / slot.h;
+                let sWidth = imgCanvas.width;
+                let sHeight = imgCanvas.height;
+                let sX = 0, sY = 0;
+
+                if (imgAspect > targetAspect) {
+                    sWidth = imgCanvas.height * targetAspect;
+                    sX = (imgCanvas.width - sWidth) / 2;
+                } else {
+                    sHeight = imgCanvas.width / targetAspect;
+                    sY = (imgCanvas.height - sHeight) / 2;
+                }
+
+                ctx.drawImage(imgCanvas, sX, sY, sWidth, sHeight, slot.x, slot.y, slot.w, slot.h);
+            });
+
+            // 2단계: 그 위에 2x2 프레임을 오버레이로 덮어씌우기
+            const frameInfo = FRAME_LIST[currentFrameIndex];
+            const frameImg = new Image();
+            frameImg.crossOrigin = "anonymous";
+            frameImg.src = frameInfo.path;
+            
+            frameImg.onload = () => {
+                ctx.drawImage(frameImg, 0, 0, width, height);
+                updateThumbCanvas();
+            };
+
+            frameImg.onerror = () => {
+                ctx.strokeStyle = "#ff4b72";
+                ctx.lineWidth = 15;
+                ctx.strokeRect(20, 20, width - 40, height - 40);
+                updateThumbCanvas();
+            };
+        }
+
+        function updateThumbCanvas() {
+            thumbCanvas.width = resultCanvas.width;
+            thumbCanvas.height = resultCanvas.height;
+            const tCtx = thumbCanvas.getContext('2d');
+            tCtx.drawImage(resultCanvas, 0, 0);
+        }
+
+        document.getElementById('to-email-btn').addEventListener('click', () => {
+            showStep('step-email');
+        });
+
+        document.getElementById('send-email-btn').addEventListener('click', async () => {
+            const email = document.getElementById('email-input').value.trim();
+            if (!email || !email.includes('@')) {
+                alert("올바른 이메일 주소를 입력해주세요.");
+                return;
+            }
+
+            if (!gasWebappUrl) {
+                alert("Google Apps Script 웹앱 URL이 설정되지 않았습니다. 하단 설정에서 URL을 등록해주세요.");
+                toggleSettings();
+                return;
+            }
+
+            const loadingContainer = document.getElementById('loading-container');
+            const sendBtn = document.getElementById('send-email-btn');
+            loadingContainer.classList.remove('hidden');
+            sendBtn.classList.add('hidden');
+
+            const imageDataUrl = resultCanvas.toDataURL('image/png');
+
+            try {
+                await fetch(gasWebappUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, image: imageDataUrl })
+                });
+
+                alert("성공적으로 이메일 전송 요청이 완료되었습니다! 수신함을 확인해주세요.");
+                location.reload();
+            } catch (err) {
+                console.error(err);
+                alert("이메일 전송 중 오류가 발생했습니다. GAS URL 및 권한을 다시 확인해주세요.");
+                loadingContainer.classList.add('hidden');
+                sendBtn.classList.remove('hidden');
+            }
+        });
+
+        function toggleSettings() {
+            const area = document.getElementById('settings-area');
+            area.classList.toggle('hidden');
+        }
+
+        function saveGasUrl() {
+            const url = document.getElementById('gas-url-input').value.trim();
+            localStorage.setItem('gas_url', url);
+            gasWebappUrl = url;
+            alert("GAS 웹앱 URL이 저장되었습니다!");
+            toggleSettings();
+        }
+    </script>
+</body>
+</html>

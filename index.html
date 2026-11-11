@@ -69,25 +69,65 @@
             display: flex;
         }
 
-        /* 뷰포트 & 카메라 영역 */
-        .view-container {
+        /* 촬영 뷰포트 컨테이너 (실시간 프레임 오버레이 적용) */
+        .booth-view-container {
             position: relative;
             width: 100%;
-            aspect-ratio: 4 / 5;
-            background: #000;
+            aspect-ratio: 1080 / 1350; /* 프레임 비율과 동일 */
+            background: #fff;
             border-radius: 12px;
             overflow: hidden;
             margin-bottom: 15px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
         }
 
-        video, canvas {
+        /* 2x2 실시간 비디오 격자 */
+        .live-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: 554px 526px; /* 1080기준 비율 배분 */
+            grid-template-rows: 753px 597px;
+            gap: 0;
+        }
+
+        /* 각 칸별 비디오 위치 매칭 */
+        .live-slot {
+            position: relative;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .live-slot:nth-child(1) { top: 265px; left: 91px; width: 434px; height: 488px; position: absolute; }
+        .live-slot:nth-child(2) { top: 265px; left: 554px; width: 434px; height: 488px; position: absolute; }
+        .live-slot:nth-child(3) { top: 779px; left: 91px; width: 434px; height: 488px; position: absolute; }
+        .live-slot:nth-child(4) { top: 779px; left: 554px; width: 434px; height: 488px; position: absolute; }
+
+        .live-slot video {
             width: 100%;
             height: 100%;
             object-fit: cover;
             transform: scaleX(-1); /* 거울 모드 */
+        }
+
+        /* 이미 촬영된 칸에 사진 표시용 */
+        .live-slot img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* 그 위에 얹어지는 프레임 오버레이 (클릭 방지) */
+        .frame-overlay-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
         }
 
         .countdown-overlay {
@@ -144,30 +184,6 @@
 
         .btn-secondary:hover {
             background-color: #e2e6ea;
-        }
-
-        /* 썸네일 그리드 (2x2) */
-        .preview-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            width: 100%;
-            margin-bottom: 15px;
-        }
-
-        .preview-thumb {
-            aspect-ratio: 4 / 3;
-            background: #eee;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 2px solid #ddd;
-        }
-
-        .preview-thumb img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: none;
         }
 
         /* 프레임 선택 슬라이더 */
@@ -284,59 +300,47 @@
 
     <header>
         <h1>📸 인생네컷 부스</h1>
-        <p>웹캠으로 촬영하고 나만의 프레임으로 추억을 남겨보세요!</p>
+        <p>프레임을 먼저 고르고, 예쁜 위치에 맞춰 사진을 찍어보세요!</p>
     </header>
 
     <div class="container">
         
-        <!-- STEP 1: 촬영 대기 -->
-        <div id="step-start" class="step-section active">
-            <div class="view-container">
-                <video id="webcam" autoplay playsinline></video>
+        <!-- STEP 1: 프레임 먼저 선택 -->
+        <div id="step-select-frame" class="step-section active">
+            <div class="frame-selector-container" style="margin-top: 10px;">
+                <label>🎨 원하는 프레임을 선택하세요</label>
+                <div class="frame-list" id="frame-select-list" style="justify-content: center; flex-wrap: wrap;">
+                    <!-- JavaScript 동적 로드 -->
+                </div>
             </div>
-            <p style="text-align: center; font-size: 0.9rem; color: #666; margin-bottom: 10px;">
-                준비되셨다면 아래 버튼을 눌러주세요! (총 4컷 촬영)
-            </p>
-            <button class="btn" id="start-btn">촬영 시작하기</button>
+            <div style="width: 100%; aspect-ratio: 1080/1350; background: #eee; border-radius: 12px; overflow: hidden; margin-bottom: 15px; display: flex; justify-content: center; align-items: center;">
+                <img id="preview-frame-cover" src="" alt="프레임 미리보기" style="width: 100%; height: 100%; object-fit: contain;">
+            </div>
+            <button class="btn" id="start-shooting-btn">이 프레임으로 촬영 시작하기</button>
             <div class="settings-link" onclick="toggleSettings()">⚙️ GAS 웹앱 설정 변경</div>
         </div>
 
-        <!-- STEP 2: 촬영 진행 -->
+        <!-- STEP 2: 프레임 보면서 실시간 촬영 -->
         <div id="step-shooting" class="step-section">
-            <div class="view-container">
-                <video id="shoot-video" autoplay playsinline></video>
+            <div class="booth-view-container" id="booth-container">
+                <!-- 4개의 실시간 카메라 칸 -->
+                <div class="live-grid">
+                    <div class="live-slot" id="slot-0"><video class="cam-video" autoplay playsinline></video></div>
+                    <div class="live-slot" id="slot-1"><video class="cam-video" autoplay playsinline></video></div>
+                    <div class="live-slot" id="slot-2"><video class="cam-video" autoplay playsinline></video></div>
+                    <div class="live-slot" id="slot-3"><video class="cam-video" autoplay playsinline></video></div>
+                </div>
+                <!-- 투명 구멍이 뚫린 프레임 오버레이 이미지 -->
+                <img id="active-frame-overlay" class="frame-overlay-img" src="" alt="프레임">
                 <div id="countdown" class="countdown-overlay hidden">3</div>
             </div>
-            <div class="preview-grid" id="mini-previews">
-                <div class="preview-thumb"></div>
-                <div class="preview-thumb"></div>
-                <div class="preview-thumb"></div>
-                <div class="preview-thumb"></div>
-            </div>
-            <p id="shoot-status" style="font-weight: bold; color: var(--primary-color);">촬영 준비 중...</p>
+            <p id="shoot-status" style="font-weight: bold; color: var(--primary-color); text-align: center; margin-bottom: 10px;">프레임 위치를 보며 포즈를 잡으세요!</p>
         </div>
 
-        <!-- STEP 3: 프레임 선택 및 편집 -->
-        <div id="step-edit" class="step-section">
-            <div class="view-container" style="background: #fff; border: 2px dashed #ddd;">
-                <canvas id="result-canvas" style="transform: none;"></canvas>
-            </div>
-            
-            <div class="frame-selector-container">
-                <label>🎨 프레임 선택</label>
-                <div class="frame-list" id="frame-list">
-                    <!-- JavaScript로 동적 로드됨 -->
-                </div>
-            </div>
-
-            <button class="btn" id="to-email-btn">이메일로 전송하기</button>
-            <button class="btn btn-secondary" onclick="location.reload()">다시 촬영하기</button>
-        </div>
-
-        <!-- STEP 4: 이메일 전송 -->
+        <!-- STEP 3: 최종 결과 확인 및 이메일 전송 -->
         <div id="step-email" class="step-section">
-            <div class="view-container" style="height: 250px; margin-bottom: 10px;">
-                <canvas id="thumb-canvas" style="object-fit: contain; transform: none;"></canvas>
+            <div class="view-container" style="background: #fff; border: 2px dashed #ddd; aspect-ratio: 1080/1350; width: 100%; margin-bottom: 15px; position: relative;">
+                <canvas id="result-canvas" style="width: 100%; height: 100%; object-fit: contain; transform: none;"></canvas>
             </div>
             <div class="input-group">
                 <label for="email-input">받으실 이메일 주소</label>
@@ -347,7 +351,7 @@
                 <div class="spinner"></div>
                 <p style="text-align: center; font-size: 0.9rem; color: #666;">이메일로 전송 중입니다...</p>
             </div>
-            <button class="btn btn-secondary" onclick="showStep('step-edit')" style="margin-top: 5px;">프레임 다시 고르기</button>
+            <button class="btn btn-secondary" onclick="location.reload()" style="margin-top: 5px;">처음으로 돌아가기</button>
         </div>
 
         <!-- GAS 설정 모달/영역 -->
@@ -367,11 +371,7 @@
         // ==========================================
         const FRAME_LIST = [
             { id: 'frame1', name: '기본 프레임', path: 'frames/frame1.png' },
-            { id: 'frame2', name: '할로윈 호박 프레임', path: 'frames/frame2.png' },
-            { id: 'frame3', name: '기본 프레임 맞춤', path: 'frames/frame3.png' },
-            { id: 'frame4', name: '아무거나 프레임', path: 'frames/frame4.png' },
-            { id: 'frame5', name: '크리스마스 프레임', path: 'frames/frame5.png' },
-            { id: 'frame6', name: '눈송이 프레임', path: 'frames/frame6.png' }
+            { id: 'frame2', name: '할로윈 호박 프레임', path: 'frames/frame2.png' }
         ];
 
         let currentFrameIndex = 0;
@@ -379,54 +379,56 @@
         let videoStream = null;
         let gasWebappUrl = localStorage.getItem('gas_url') || '';
 
-        const webcam = document.getElementById('webcam');
-        const shootVideo = document.getElementById('shoot-video');
-        const startBtn = document.getElementById('start-btn');
-        const countdownEl = document.getElementById('countdown');
-        const shootStatus = document.getElementById('shoot-status');
         const resultCanvas = document.getElementById('result-canvas');
-        const thumbCanvas = document.getElementById('thumb-canvas');
-        const frameListEl = document.getElementById('frame-list');
 
         window.addEventListener('DOMContentLoaded', () => {
-            initWebcam();
-            initFrameSelector();
+            initWebcamStream();
+            initFrameSelectorUI();
             if(gasWebappUrl) {
                 document.getElementById('gas-url-input').value = gasWebappUrl;
             }
         });
 
-        async function initWebcam() {
+        async function initWebcamStream() {
             try {
                 videoStream = await navigator.mediaDevices.getUserMedia({ 
                     video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" }, 
                     audio: false 
                 });
-                webcam.srcObject = videoStream;
-                shootVideo.srcObject = videoStream;
+                // 모든 실시간 비디오 태그에 스트림 연결
+                document.querySelectorAll('.cam-video').forEach(video => {
+                    video.srcObject = videoStream;
+                });
             } catch (err) {
                 alert("웹캠 권한이 거부되었거나 카메라를 찾을 수 없습니다. 브라우저 설정을 확인해주세요.");
                 console.error(err);
             }
         }
 
-        function initFrameSelector() {
-            frameListEl.innerHTML = '';
+        function initFrameSelectorUI() {
+            const listEl = document.getElementById('frame-select-list');
+            listEl.innerHTML = '';
             FRAME_LIST.forEach((frame, idx) => {
                 const opt = document.createElement('div');
                 opt.className = `frame-option ${idx === currentFrameIndex ? 'selected' : ''}`;
                 opt.innerHTML = `
-                    <img src="${frame.path}" alt="${frame.name}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'70\' height=\'90\'><rect width=\'100%\' height=\'100%\' fill=\'%23eee\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-size=\'10\' fill=\'%23aaa\'>프레임</text></svg>'">
+                    <img src="${frame.path}" alt="${frame.name}">
                     <span>${frame.name}</span>
                 `;
                 opt.addEventListener('click', () => {
                     document.querySelectorAll('.frame-option').forEach(el => el.classList.remove('selected'));
                     opt.classList.add('selected');
                     currentFrameIndex = idx;
-                    renderCompositeImage();
+                    updatePreviewCover();
                 });
-                frameListEl.appendChild(opt);
+                listEl.appendChild(opt);
             });
+            updatePreviewCover();
+        }
+
+        function updatePreviewCover() {
+            const cover = document.getElementById('preview-frame-cover');
+            cover.src = FRAME_LIST[currentFrameIndex].path;
         }
 
         function showStep(stepId) {
@@ -451,40 +453,59 @@
             } catch(e) {}
         }
 
-        startBtn.addEventListener('click', async () => {
+        // 촬영 시작 버튼 클릭 시
+        document.getElementById('start-shooting-btn').addEventListener('click', async () => {
+            // 선택한 프레임을 촬영 화면의 오버레이로 적용
+            const activeFramePath = FRAME_LIST[currentFrameIndex].path;
+            document.getElementById('active-frame-overlay').src = activeFramePath;
+
             showStep('step-shooting');
             capturedImages = [];
-            document.querySelectorAll('.preview-thumb').forEach(thumb => thumb.innerHTML = '');
+
+            // 비디오 스트림 다시 확실히 연결
+            document.querySelectorAll('.cam-video').forEach(video => {
+                if(!video.srcObject && videoStream) video.srcObject = videoStream;
+            });
+
+            const slots = document.querySelectorAll('.live-slot');
             
             for (let i = 0; i < 4; i++) {
-                shootStatus.innerText = `${i + 1}번째 사진 촬영 중...`;
+                const slot = slots[i];
+                const videoEl = slot.querySelector('video');
+                
+                document.getElementById('shoot-status').innerText = `${i + 1}번째 칸 촬영 준비 (3초 뒤 찰칵!)`;
                 await runCountdown();
                 playShutterSound();
                 
+                // 해당 칸의 비디오 화면을 캡처하여 이미지로 변환 후 고정
                 const canvas = document.createElement('canvas');
-                canvas.width = shootVideo.videoWidth || 640;
-                canvas.height = shootVideo.videoHeight || 480;
+                canvas.width = videoEl.videoWidth || 640;
+                canvas.height = videoEl.videoHeight || 480;
                 const ctx = canvas.getContext('2d');
                 ctx.translate(canvas.width, 0);
                 ctx.scale(-1, 1);
-                ctx.drawImage(shootVideo, 0, 0, canvas.width, canvas.height);
+                ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
                 
                 capturedImages.push(canvas);
-                
-                const thumbContainer = document.querySelectorAll('.preview-thumb')[i];
-                thumbContainer.innerHTML = `<img src="${canvas.toDataURL('image/png')}" />`;
+
+                // 비디오를 숨기고 찍힌 사진으로 교체
+                videoEl.classList.add('hidden');
+                const img = document.createElement('img');
+                img.src = canvas.toDataURL('image/png');
+                slot.appendChild(img);
                 
                 if (i < 3) await wait(1000);
             }
 
-            shootStatus.innerText = "촬영 완료! 프레임 합성 중...";
-            await wait(500);
-            renderCompositeImage();
-            showStep('step-edit');
+            document.getElementById('shoot-status').innerText = "촬영 완료! 최종 결과물 생성 중...";
+            await wait(800);
+            renderFinalCompositeImage();
+            showStep('step-email');
         });
 
         function runCountdown() {
             return new Promise(resolve => {
+                const countdownEl = document.getElementById('countdown');
                 countdownEl.classList.remove('hidden');
                 let count = 3;
                 countdownEl.innerText = count;
@@ -505,8 +526,8 @@
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        // 3. Canvas 합성 엔진 (캔바 1080x1350 및 사용자 제공 X, Y 좌표 완벽 반영)
-        function renderCompositeImage() {
+        // 최종 캔버스 고화질 합성 엔진 (1080x1350)
+        function renderFinalCompositeImage() {
             const width = 1080;  
             const height = 1350; 
             
@@ -517,18 +538,17 @@
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, width, height);
 
-            // 📌 캔바 기준 제공해주신 X, Y 좌표 및 크기 반영 (W, H는 동일 비율 칸 크기 적용)
-            const slots = [
-                { x: 91.3,  y: 265.4, w: 434.2, h: 485.7 }, // 1번: 왼쪽 위
-                { x: 554.5, y: 265.4, w: 434.2, h: 485.7 }, // 2번: 오른쪽 위
-                { x: 91.3,  y: 779.0, w: 434.2, h: 485.7 }, // 3번: 왼쪽 아래
-                { x: 554.5, y: 779.0, w: 434.2, h: 485.7 }  // 4번: 오른쪽 아래
+            const slotsCoords = [
+                { x: 91.3,  y: 265.4, w: 434, h: 488 },
+                { x: 554.5, y: 265.4, w: 434, h: 488 },
+                { x: 91.3,  y: 779.0, w: 434, h: 488 },
+                { x: 554.5, y: 779.0, w: 434, h: 488 }
             ];
 
-            // 1단계: 사진 4장을 각 칸 위치에 맞게 깔끔하게 채워서 그리기
+            // 1단계: 찍힌 사진 4장을 좌표에 맞게 그리기
             capturedImages.forEach((imgCanvas, index) => {
-                if (!slots[index]) return;
-                const slot = slots[index];
+                if (!slotsCoords[index]) return;
+                const slot = slotsCoords[index];
 
                 const imgAspect = imgCanvas.width / imgCanvas.height;
                 const targetAspect = slot.w / slot.h;
@@ -547,7 +567,7 @@
                 ctx.drawImage(imgCanvas, sX, sY, sWidth, sHeight, slot.x, slot.y, slot.w, slot.h);
             });
 
-            // 2단계: 그 위에 선택한 프레임 이미지 오버레이 덮어씌우기
+            // 2단계: 그 위에 선택한 프레임 덮어씌우기
             const frameInfo = FRAME_LIST[currentFrameIndex];
             const frameImg = new Image();
             frameImg.crossOrigin = "anonymous";
@@ -555,28 +575,10 @@
             
             frameImg.onload = () => {
                 ctx.drawImage(frameImg, 0, 0, width, height);
-                updateThumbCanvas();
-            };
-
-            frameImg.onerror = () => {
-                ctx.strokeStyle = "#ff4b72";
-                ctx.lineWidth = 15;
-                ctx.strokeRect(20, 20, width - 40, height - 40);
-                updateThumbCanvas();
             };
         }
 
-        function updateThumbCanvas() {
-            thumbCanvas.width = resultCanvas.width;
-            thumbCanvas.height = resultCanvas.height;
-            const tCtx = thumbCanvas.getContext('2d');
-            tCtx.drawImage(resultCanvas, 0, 0);
-        }
-
-        document.getElementById('to-email-btn').addEventListener('click', () => {
-            showStep('step-email');
-        });
-
+        // 이메일 전송 버튼
         document.getElementById('send-email-btn').addEventListener('click', async () => {
             const email = document.getElementById('email-input').value.trim();
             if (!email || !email.includes('@')) {

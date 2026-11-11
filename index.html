@@ -69,7 +69,7 @@
             display: flex;
         }
 
-        /* 촬영 뷰포트 컨테이너 (새로운 1080x1620 비율 적용) */
+        /* 촬영 뷰포트 컨테이너 (1080x1620 비율 유지) */
         .booth-view-container {
             position: relative;
             width: 100%;
@@ -80,17 +80,17 @@
             margin-bottom: 15px;
         }
 
-        /* 실시간 비디오 칸 위치 매칭 (450x630) */
+        /* 퍼센트(%) 좌표를 이용한 완벽한 100% 일치 슬롯 배치 */
         .live-slot {
             position: absolute;
             overflow: hidden;
             background: #000;
         }
 
-        .live-slot:nth-child(1) { top: 160px; left: 65px; width: 450px; height: 630px; }
-        .live-slot:nth-child(2) { top: 160px; left: 560px; width: 450px; height: 630px; }
-        .live-slot:nth-child(3) { top: 840px; left: 65px; width: 450px; height: 630px; }
-        .live-slot:nth-child(4) { top: 840px; left: 560px; width: 450px; height: 630px; }
+        .live-slot:nth-child(1) { top: 9.876%; left: 6.018%; width: 41.667%; height: 38.889%; }
+        .live-slot:nth-child(2) { top: 9.876%; left: 51.852%; width: 41.667%; height: 38.889%; }
+        .live-slot:nth-child(3) { top: 51.852%; left: 6.018%; width: 41.667%; height: 38.889%; }
+        .live-slot:nth-child(4) { top: 51.852%; left: 51.852%; width: 41.667%; height: 38.889%; }
 
         .live-slot video {
             width: 100%;
@@ -103,9 +103,13 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 2;
         }
 
-        /* 프레임 오버레이 이미지 */
+        /* 프레임 오버레이 이미지 (클릭 방지) */
         .frame-overlay-img {
             position: absolute;
             top: 0;
@@ -307,12 +311,12 @@
         <!-- STEP 2: 프레임 보면서 실시간 촬영 -->
         <div id="step-shooting" class="step-section">
             <div class="booth-view-container" id="booth-container">
-                <div class="live-slot" id="slot-0"><video class="cam-video" autoplay playsinline></video></div>
-                <div class="live-slot" id="slot-1"><video class="cam-video" autoplay playsinline></video></div>
-                <div class="live-slot" id="slot-2"><video class="cam-video" autoplay playsinline></video></div>
-                <div class="live-slot" id="slot-3"><video class="cam-video" autoplay playsinline></video></div>
+                <div class="live-slot" id="slot-0"><video class="cam-video" autoplay playsinline muted></video></div>
+                <div class="live-slot" id="slot-1"><video class="cam-video" autoplay playsinline muted></video></div>
+                <div class="live-slot" id="slot-2"><video class="cam-video" autoplay playsinline muted></video></div>
+                <div class="live-slot" id="slot-3"><video class="cam-video" autoplay playsinline muted></video></div>
                 <img id="active-frame-overlay" class="frame-overlay-img" src="" alt="프레임">
-                <div id="countdown" class="countdown-overlay hidden">3</div>
+                <div id="countdown" class="countdown-overlay hidden">5</div>
             </div>
             <p id="shoot-status" style="font-weight: bold; color: var(--primary-color); text-align: center; margin-bottom: 10px;">프레임 위치를 보며 포즈를 잡으세요!</p>
         </div>
@@ -347,9 +351,8 @@
 
     <script>
         const FRAME_LIST = [
-            { id: 'frame1', name: '기본', path: 'frames/frame1.png' },
-            { id: 'frame2', name: '크리스마스 영어', path: 'frames/frame2.png' },
-            { id: 'frame3', name: '크리스마스 한글', path: 'frames/frame3.png' }
+            { id: 'frame1', name: '기본 프레임', path: 'frames/frame1.png' },
+            { id: 'frame2', name: '할로윈 호박 프레임', path: 'frames/frame2.png' }
         ];
 
         let currentFrameIndex = 0;
@@ -437,6 +440,7 @@
             showStep('step-shooting');
             capturedImages = [];
 
+            // 비디오 스트림 재확인 및 연결
             document.querySelectorAll('.cam-video').forEach(video => {
                 if(!video.srcObject && videoStream) video.srcObject = videoStream;
             });
@@ -447,7 +451,7 @@
                 const slot = slots[i];
                 const videoEl = slot.querySelector('video');
                 
-                document.getElementById('shoot-status').innerText = `${i + 1}번째 칸 촬영 준비 (3초 뒤 찰칵!)`;
+                document.getElementById('shoot-status').innerText = `${i + 1}번째 칸 촬영 준비 (5초 뒤 찰칵!)`;
                 await runCountdown();
                 playShutterSound();
                 
@@ -461,7 +465,7 @@
                 
                 capturedImages.push(canvas);
 
-                videoEl.classList.add('hidden');
+                // 찍힌 사진을 해당 슬롯에 고정 표시
                 const img = document.createElement('img');
                 img.src = canvas.toDataURL('image/png');
                 slot.appendChild(img);
@@ -479,7 +483,7 @@
             return new Promise(resolve => {
                 const countdownEl = document.getElementById('countdown');
                 countdownEl.classList.remove('hidden');
-                let count = 3;
+                let count = 5; // 5초로 변경
                 countdownEl.innerText = count;
                 const timer = setInterval(() => {
                     count--;
@@ -498,7 +502,7 @@
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        // 최종 고화질 합성 엔진 (1080x1620 및 새로운 450x630 좌표 반영)
+        // 최종 고화질 합성 엔진 (1080x1620 및 450x630 좌표 반영)
         function renderFinalCompositeImage() {
             const width = 1080;  
             const height = 1620; 

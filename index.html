@@ -80,23 +80,23 @@
             margin-bottom: 15px;
         }
 
-        /* 퍼센트(%) 좌표를 이용한 완벽한 100% 일치 슬롯 배치 */
+        /* 450x630 규격 및 좌표 (65,160 / 560,160 / 65,840 / 560,840) 퍼센트 환산 */
         .live-slot {
             position: absolute;
             overflow: hidden;
             background: #000;
         }
 
-        .live-slot:nth-child(1) { top: 9.876%; left: 6.018%; width: 41.667%; height: 38.889%; }
-        .live-slot:nth-child(2) { top: 9.876%; left: 51.852%; width: 41.667%; height: 38.889%; }
-        .live-slot:nth-child(3) { top: 51.852%; left: 6.018%; width: 41.667%; height: 38.889%; }
-        .live-slot:nth-child(4) { top: 51.852%; left: 51.852%; width: 41.667%; height: 38.889%; }
+        .live-slot:nth-child(1) { top: 9.8765%; left: 6.0185%; width: 41.6667%; height: 38.8889%; }
+        .live-slot:nth-child(2) { top: 9.8765%; left: 51.8519%; width: 41.6667%; height: 38.8889%; }
+        .live-slot:nth-child(3) { top: 51.8519%; left: 6.0185%; width: 41.6667%; height: 38.8889%; }
+        .live-slot:nth-child(4) { top: 51.8519%; left: 51.8519%; width: 41.6667%; height: 38.8889%; }
 
         .live-slot video {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transform: scaleX(-1); /* 거울 모드 */
+            transform: scaleX(-1);
         }
 
         .live-slot img {
@@ -109,7 +109,7 @@
             z-index: 2;
         }
 
-        /* 프레임 오버레이 이미지 (클릭 방지) */
+        /* 프레임 오버레이 이미지 */
         .frame-overlay-img {
             position: absolute;
             top: 0;
@@ -118,6 +118,27 @@
             height: 100%;
             pointer-events: none;
             z-index: 5;
+        }
+
+        /* 화면 미리보기용 하단 워터마크 표시 */
+        .live-watermark {
+            position: absolute;
+            bottom: 3.2%;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: clamp(0.85rem, 3.2vw, 1.05rem);
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            z-index: 6;
+            pointer-events: none;
+            color: #222;
+            text-shadow: 0 0 4px rgba(255, 255, 255, 0.9), 0 0 8px rgba(255, 255, 255, 0.7);
+        }
+
+        .live-watermark.light-text {
+            color: #ffffff;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.75), 0 0 8px rgba(0, 0, 0, 0.45);
         }
 
         .countdown-overlay {
@@ -301,8 +322,9 @@
                 <label>🎨 원하는 프레임을 선택하세요</label>
                 <div class="frame-list" id="frame-select-list" style="justify-content: center; flex-wrap: wrap;"></div>
             </div>
-            <div style="width: 100%; aspect-ratio: 1080/1620; background: #eee; border-radius: 12px; overflow: hidden; margin-bottom: 15px; display: flex; justify-content: center; align-items: center;">
+            <div style="position: relative; width: 100%; aspect-ratio: 1080/1620; background: #eee; border-radius: 12px; overflow: hidden; margin-bottom: 15px; display: flex; justify-content: center; align-items: center;">
                 <img id="preview-frame-cover" src="" alt="프레임 미리보기" style="width: 100%; height: 100%; object-fit: contain;">
+                <div id="preview-watermark" class="live-watermark"></div>
             </div>
             <button class="btn" id="start-shooting-btn">이 프레임으로 촬영 시작하기</button>
             <div class="settings-link" onclick="toggleSettings()">⚙️ GAS 웹앱 설정 변경</div>
@@ -316,6 +338,7 @@
                 <div class="live-slot" id="slot-2"><video class="cam-video" autoplay playsinline muted></video></div>
                 <div class="live-slot" id="slot-3"><video class="cam-video" autoplay playsinline muted></video></div>
                 <img id="active-frame-overlay" class="frame-overlay-img" src="" alt="프레임">
+                <div id="shooting-watermark" class="live-watermark"></div>
                 <div id="countdown" class="countdown-overlay hidden">5</div>
             </div>
             <p id="shoot-status" style="font-weight: bold; color: var(--primary-color); text-align: center; margin-bottom: 10px;">프레임 위치를 보며 포즈를 잡으세요!</p>
@@ -350,28 +373,40 @@
     </div>
 
     <script>
+        // =========================================================================
+        // 📌 [매해 수정하는 곳] 하단 워터마크 문구 (내년에는 여기 글자만 바꾸세요!)
+        // =========================================================================
+        const WATERMARK_TEXT = "2026 하랑중학교";
+
+        // =========================================================================
+        // 📌 [프레임 설정 영역] 깃허브 frames 폴더 안의 이미지 리스트
+        // =========================================================================
         const FRAME_LIST = [
-            { id: 'frame1', name: '기본', path: 'frames/frame1.png' },
-            { id: 'frame2', name: '크리스마스 영어', path: 'frames/frame2.png' },
-             { id: 'frame3', name: '크리스마스 한글', path: 'frames/frame3.png' },
-             { id: 'frame4', name: '행운부적', path: 'frames/frame4.png' },
-             { id: 'frame5', name: '윈도우 에러', path: 'frames/frame5.png' }
+            { id: 'frame1', name: '기본 프레임', path: 'frames/frame1.png' },
+            { id: 'frame2', name: '크리스마스 프레임', path: 'frames/frame2.png' }
         ];
 
         let currentFrameIndex = 0;
         let capturedImages = [];
         let videoStream = null;
         let gasWebappUrl = localStorage.getItem('gas_url') || '';
+        let isCurrentFrameDarkBottom = false;
 
         const resultCanvas = document.getElementById('result-canvas');
 
         window.addEventListener('DOMContentLoaded', () => {
             initWebcamStream();
+            initWatermarkText();
             initFrameSelectorUI();
             if(gasWebappUrl) {
                 document.getElementById('gas-url-input').value = gasWebappUrl;
             }
         });
+
+        function initWatermarkText() {
+            document.getElementById('preview-watermark').innerText = WATERMARK_TEXT;
+            document.getElementById('shooting-watermark').innerText = WATERMARK_TEXT;
+        }
 
         async function initWebcamStream() {
             try {
@@ -409,9 +444,62 @@
             updatePreviewCover();
         }
 
+        // 프레임 하단 배경색 밝기를 자동 분석하여 글자색(흰색/어두운색) 자동 전환
+        function detectFrameBottomBrightness(imgSrc) {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+                try {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = 108;
+                    tempCanvas.height = 162;
+                    const tCtx = tempCanvas.getContext('2d');
+                    tCtx.drawImage(img, 0, 0, 108, 162);
+
+                    // 하단 중앙(y: 148~158, x: 30~78) 영역 픽셀 평균 밝기 측정
+                    const imgData = tCtx.getImageData(30, 148, 48, 10).data;
+                    let totalBrightness = 0;
+                    let count = 0;
+
+                    for (let i = 0; i < imgData.length; i += 4) {
+                        const r = imgData[i];
+                        const g = imgData[i + 1];
+                        const b = imgData[i + 2];
+                        const a = imgData[i + 3];
+                        // 투명 픽셀은 흰 배경으로 간주
+                        const effR = a < 128 ? 255 : r;
+                        const effG = a < 128 ? 255 : g;
+                        const effB = a < 128 ? 255 : b;
+                        // 인지 밝기 공식
+                        const brightness = (effR * 299 + effG * 587 + effB * 114) / 1000;
+                        totalBrightness += brightness;
+                        count++;
+                    }
+
+                    const avgBrightness = totalBrightness / count;
+                    isCurrentFrameDarkBottom = avgBrightness < 140;
+
+                    const previewWm = document.getElementById('preview-watermark');
+                    const shootWm = document.getElementById('shooting-watermark');
+                    if (isCurrentFrameDarkBottom) {
+                        previewWm.classList.add('light-text');
+                        shootWm.classList.add('light-text');
+                    } else {
+                        previewWm.classList.remove('light-text');
+                        shootWm.classList.remove('light-text');
+                    }
+                } catch (e) {
+                    isCurrentFrameDarkBottom = false;
+                }
+            };
+            img.src = imgSrc;
+        }
+
         function updatePreviewCover() {
             const cover = document.getElementById('preview-frame-cover');
-            cover.src = FRAME_LIST[currentFrameIndex].path;
+            const path = FRAME_LIST[currentFrameIndex].path;
+            cover.src = path;
+            detectFrameBottomBrightness(path);
         }
 
         function showStep(stepId) {
@@ -443,7 +531,6 @@
             showStep('step-shooting');
             capturedImages = [];
 
-            // 비디오 스트림 재확인 및 연결
             document.querySelectorAll('.cam-video').forEach(video => {
                 if(!video.srcObject && videoStream) video.srcObject = videoStream;
             });
@@ -468,7 +555,6 @@
                 
                 capturedImages.push(canvas);
 
-                // 찍힌 사진을 해당 슬롯에 고정 표시
                 const img = document.createElement('img');
                 img.src = canvas.toDataURL('image/png');
                 slot.appendChild(img);
@@ -486,7 +572,7 @@
             return new Promise(resolve => {
                 const countdownEl = document.getElementById('countdown');
                 countdownEl.classList.remove('hidden');
-                let count = 5; // 5초로 변경
+                let count = 5;
                 countdownEl.innerText = count;
                 const timer = setInterval(() => {
                     count--;
@@ -505,7 +591,7 @@
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        // 최종 고화질 합성 엔진 (1080x1620 및 450x630 좌표 반영)
+        // 최종 고화질 합성 엔진 (1080x1620 + 자동 대비 워터마크 렌더링)
         function renderFinalCompositeImage() {
             const width = 1080;  
             const height = 1620; 
@@ -552,7 +638,46 @@
             
             frameImg.onload = () => {
                 ctx.drawImage(frameImg, 0, 0, width, height);
+                drawCanvasWatermark(ctx, width, height);
             };
+
+            frameImg.onerror = () => {
+                drawCanvasWatermark(ctx, width, height);
+            };
+        }
+
+        // 하단 워터마크 그리기 (배경 밝기 자동 감지 및 테두리/그림자 보정)
+        function drawCanvasWatermark(ctx, width, height) {
+            if (!WATERMARK_TEXT || WATERMARK_TEXT.trim() === '') return;
+
+            ctx.save();
+            ctx.font = "600 32px 'Pretendard', 'Malgun Gothic', sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            const textX = width / 2;
+            const textY = 1550; // 하단 여백 정중앙 (1470~1620 사이)
+
+            if (isCurrentFrameDarkBottom) {
+                // 어두운 배경일 때: 흰색 글씨 + 어두운 외곽선/그림자
+                ctx.shadowColor = "rgba(0, 0, 0, 0.65)";
+                ctx.shadowBlur = 8;
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = "rgba(0, 0, 0, 0.45)";
+                ctx.strokeText(WATERMARK_TEXT, textX, textY);
+                ctx.fillStyle = "#ffffff";
+                ctx.fillText(WATERMARK_TEXT, textX, textY);
+            } else {
+                // 밝은 배경일 때: 짙은 차콜 글씨 + 흰색 은은한 외곽선
+                ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+                ctx.shadowBlur = 6;
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+                ctx.strokeText(WATERMARK_TEXT, textX, textY);
+                ctx.fillStyle = "#222222";
+                ctx.fillText(WATERMARK_TEXT, textX, textY);
+            }
+            ctx.restore();
         }
 
         document.getElementById('send-email-btn').addEventListener('click', async () => {

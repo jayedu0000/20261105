@@ -120,13 +120,14 @@
             z-index: 5;
         }
 
-        /* 화면 미리보기용 하단 워터마크 표시 */
+        /* 화면 미리보기용 하단 워터마크 (커스텀 폰트 'CustomWatermarkFont' 우선 적용) */
         .live-watermark {
             position: absolute;
             bottom: 3.2%;
             left: 0;
             width: 100%;
             text-align: center;
+            font-family: 'CustomWatermarkFont', 'Pretendard', 'Malgun Gothic', sans-serif;
             font-size: clamp(0.85rem, 3.2vw, 1.05rem);
             font-weight: 600;
             letter-spacing: 0.03em;
@@ -374,19 +375,17 @@
 
     <script>
         // =========================================================================
-        // 📌 [매해 수정하는 곳] 하단 워터마크 문구 (내년에는 여기 글자만 바꾸세요!)
+        // 📌 [매해 수정하는 곳] 하단 워터마크 문구 & 폰트 파일 경로
         // =========================================================================
         const WATERMARK_TEXT = "2026 하랑중학교";
+        const WATERMARK_FONT_PATH = "fonts/myfont.ttf"; // 깃허브에 올린 폰트 파일 경로 (.ttf, .otf, .woff 등)
 
         // =========================================================================
         // 📌 [프레임 설정 영역] 깃허브 frames 폴더 안의 이미지 리스트
         // =========================================================================
         const FRAME_LIST = [
-             { id: 'frame1', name: '기본', path: 'frames/frame1.png' },
-            { id: 'frame2', name: '크리스마스 영어', path: 'frames/frame2.png' },
-             { id: 'frame3', name: '크리스마스 한글', path: 'frames/frame3.png' },
-             { id: 'frame4', name: '행운부적', path: 'frames/frame4.png' },
-             { id: 'frame5', name: '윈도우 에러', path: 'frames/frame5.png' }
+            { id: 'frame1', name: '기본 프레임', path: 'frames/frame1.png' },
+            { id: 'frame2', name: '크리스마스 프레임', path: 'frames/frame2.png' }
         ];
 
         let currentFrameIndex = 0;
@@ -397,7 +396,8 @@
 
         const resultCanvas = document.getElementById('result-canvas');
 
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadCustomWatermarkFont();
             initWebcamStream();
             initWatermarkText();
             initFrameSelectorUI();
@@ -405,6 +405,18 @@
                 document.getElementById('gas-url-input').value = gasWebappUrl;
             }
         });
+
+        // 업로드한 커스텀 폰트를 브라우저 및 캔버스에 등록
+        async function loadCustomWatermarkFont() {
+            if (!WATERMARK_FONT_PATH) return;
+            try {
+                const fontFace = new FontFace('CustomWatermarkFont', `url(${WATERMARK_FONT_PATH})`);
+                const loadedFont = await fontFace.load();
+                document.fonts.add(loadedFont);
+            } catch (e) {
+                console.warn("커스텀 폰트 로드 실패 (기본 폰트로 대체됩니다):", e);
+            }
+        }
 
         function initWatermarkText() {
             document.getElementById('preview-watermark').innerText = WATERMARK_TEXT;
@@ -447,7 +459,6 @@
             updatePreviewCover();
         }
 
-        // 프레임 하단 배경색 밝기를 자동 분석하여 글자색(흰색/어두운색) 자동 전환
         function detectFrameBottomBrightness(imgSrc) {
             const img = new Image();
             img.crossOrigin = "anonymous";
@@ -459,7 +470,6 @@
                     const tCtx = tempCanvas.getContext('2d');
                     tCtx.drawImage(img, 0, 0, 108, 162);
 
-                    // 하단 중앙(y: 148~158, x: 30~78) 영역 픽셀 평균 밝기 측정
                     const imgData = tCtx.getImageData(30, 148, 48, 10).data;
                     let totalBrightness = 0;
                     let count = 0;
@@ -469,11 +479,9 @@
                         const g = imgData[i + 1];
                         const b = imgData[i + 2];
                         const a = imgData[i + 3];
-                        // 투명 픽셀은 흰 배경으로 간주
                         const effR = a < 128 ? 255 : r;
                         const effG = a < 128 ? 255 : g;
                         const effB = a < 128 ? 255 : b;
-                        // 인지 밝기 공식
                         const brightness = (effR * 299 + effG * 587 + effB * 114) / 1000;
                         totalBrightness += brightness;
                         count++;
@@ -567,7 +575,7 @@
 
             document.getElementById('shoot-status').innerText = "촬영 완료! 최종 결과물 생성 중...";
             await wait(800);
-            renderFinalCompositeImage();
+            await renderFinalCompositeImage();
             showStep('step-email');
         });
 
@@ -594,8 +602,9 @@
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        // 최종 고화질 합성 엔진 (1080x1620 + 자동 대비 워터마크 렌더링)
-        function renderFinalCompositeImage() {
+        async function renderFinalCompositeImage() {
+            await document.fonts.ready; // 커스텀 폰트가 캔버스에 완전히 그려지도록 대기
+
             const width = 1080;  
             const height = 1620; 
             
@@ -649,20 +658,19 @@
             };
         }
 
-        // 하단 워터마크 그리기 (배경 밝기 자동 감지 및 테두리/그림자 보정)
         function drawCanvasWatermark(ctx, width, height) {
             if (!WATERMARK_TEXT || WATERMARK_TEXT.trim() === '') return;
 
             ctx.save();
-            ctx.font = "600 32px 'Pretendard', 'Malgun Gothic', sans-serif";
+            // 커스텀 폰트('CustomWatermarkFont')를 최우선으로 적용
+            ctx.font = "600 32px 'CustomWatermarkFont', 'Pretendard', 'Malgun Gothic', sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
             const textX = width / 2;
-            const textY = 1550; // 하단 여백 정중앙 (1470~1620 사이)
+            const textY = 1550;
 
             if (isCurrentFrameDarkBottom) {
-                // 어두운 배경일 때: 흰색 글씨 + 어두운 외곽선/그림자
                 ctx.shadowColor = "rgba(0, 0, 0, 0.65)";
                 ctx.shadowBlur = 8;
                 ctx.lineWidth = 3;
@@ -671,7 +679,6 @@
                 ctx.fillStyle = "#ffffff";
                 ctx.fillText(WATERMARK_TEXT, textX, textY);
             } else {
-                // 밝은 배경일 때: 짙은 차콜 글씨 + 흰색 은은한 외곽선
                 ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
                 ctx.shadowBlur = 6;
                 ctx.lineWidth = 3;
